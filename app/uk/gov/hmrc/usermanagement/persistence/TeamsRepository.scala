@@ -18,10 +18,10 @@ package uk.gov.hmrc.usermanagement.persistence
 
 import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters.equal
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions, DeleteOneModel}
+import org.mongodb.scala.model.{DeleteOneModel, Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import uk.gov.hmrc.usermanagement.model.Team
+import uk.gov.hmrc.usermanagement.model.{Team, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -61,9 +61,12 @@ class TeamsRepository @Inject()(
       )
     )
 
-    collection.bulkWrite(bulkWrites)
-      .toFuture()
-      .map(_ => ())
+    if(bulkWrites.isEmpty)
+      Future.unit
+    else
+      collection.bulkWrite(bulkWrites)
+        .toFuture()
+        .map(_ => ())
   }
 
   def findAll(): Future[Seq[Team]] =
@@ -76,5 +79,10 @@ class TeamsRepository @Inject()(
       .find()
       .toFuture()
       .map(_.map(_.teamName))
+
+  def findByTeamName(teamName: String): Future[Option[Team]] =
+    collection
+      .find(equal("teamName", teamName))
+      .headOption()
 }
 

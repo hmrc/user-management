@@ -57,12 +57,6 @@ class UsersRepository @Inject()(
       .map(_ => ())
   }
 
-  def delete(username: String): Future[Unit] =
-    collection
-      .deleteOne(equal("username", username))
-      .toFuture()
-      .map(_ => ())
-
   def deleteMany(usernames: Seq[String]): Future[Unit] = {
     val bulkWrites = usernames.map(u =>
       DeleteOneModel(
@@ -70,9 +64,12 @@ class UsersRepository @Inject()(
       )
     )
 
-    collection.bulkWrite(bulkWrites)
-      .toFuture()
-      .map(_ => ())
+    if(bulkWrites.isEmpty)
+      Future.unit
+    else
+      collection.bulkWrite(bulkWrites)
+        .toFuture()
+        .map(_ => ())
   }
 
   def findAll(): Future[Seq[User]] =
@@ -85,5 +82,10 @@ class UsersRepository @Inject()(
       .find()
       .toFuture()
       .map(_.map(_.username))
+
+  def findByUsername(username: String): Future[Option[User]] =
+    collection
+      .find(equal("username", username))
+      .headOption()
 }
 

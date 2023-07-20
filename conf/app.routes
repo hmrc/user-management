@@ -1,3 +1,8 @@
 # microservice specific routes
 
-GET        /test             uk.gov.hmrc.usermanagement.controllers.UpdateUsersAndTeamsController.updateUsersAndTeams
+GET        /users             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllUsers
+GET        /user/:user        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserByUsername(user)
+
+GET        /teams             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams
+GET        /team/:team        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team)
+
