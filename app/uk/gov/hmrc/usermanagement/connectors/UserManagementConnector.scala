@@ -1,13 +1,29 @@
+/*
+ * Copyright 2023 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package uk.gov.hmrc.usermanagement.connectors
 
 import play.api.Logging
 import play.api.cache.AsyncCacheApi
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{Json, OFormat, __}
+import play.api.libs.json.{Json, OFormat, Reads, __}
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.usermanagement.config.{UserManagementAuthConfig, UserManagementPortalConfig}
-import uk.gov.hmrc.usermanagement.model.{Team, User}
+import uk.gov.hmrc.usermanagement.model.{Team, TeamMember, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,8 +39,6 @@ import scala.concurrent.{ExecutionContext, Future}
   import umpConfig._
   import UserManagementConnector._
   import authConfig._
-  import uk.gov.hmrc.http.HttpReads.Implicits._
-
 
   def retrieveToken(): Future[UmpToken] =
     if (authEnabled)
@@ -44,7 +58,7 @@ import scala.concurrent.{ExecutionContext, Future}
     } yield token
   }
 
-  def getAllUsers(implicit hc: HeaderCarrier): Future[Either[UMPError, Seq[User]]] = {
+  def getAllUsers()(implicit hc: HeaderCarrier): Future[Seq[User]] = {
     val url = url"$userManagementBaseUrl/v2/organisations/users"
     implicit val uf = User.format
 
@@ -53,65 +67,55 @@ import scala.concurrent.{ExecutionContext, Future}
       resp  <- httpClientV2
         .get(url)
         .setHeader(token.asHeaders():_*)
-        .execute[HttpResponse]
-        .map { response =>
-          response.status match {
-            case 200 =>
-              (response.json \\ "users").headOption
-                .map(_.as[Seq[User]])
-                .fold[Either[UMPError, Seq[User]]](ifEmpty = Left(UMPError.ConnectionError(s"Could not parse response from $url")))(Right.apply)
-            case httpCode => Left(UMPError.HTTPError(httpCode))
-          }
-        }
-        .recover {
-          case ex =>
-            logger.error(s"An error occurred when connecting to $url", ex)
-            Left(UMPError.ConnectionError(s"Could not connect to $url: ${ex.getMessage}"))
-        }
+        .execute[UmpUsers]
+        .map(_.users)
     } yield resp
-  }.recover {
-    case ex =>
-      logger.error(s"Failed to login to UMP", ex)
-      Left(UMPError.ConnectionError(s"Failed to login to UMP: ${ex.getMessage}"))
   }
 
-  def getAllTeams(implicit hc: HeaderCarrier): Future[Either[UMPError, Seq[Team]]] = {
+  def getAllTeams()(implicit hc: HeaderCarrier): Future[Seq[Team]] = {
     val url = url"$userManagementBaseUrl/v2/organisations/teams"
-    implicit val uf = Team.format
+    implicit val uf = Team.umpReads
 
     for {
       token <- retrieveToken()
       resp  <- httpClientV2
         .get(url)
         .setHeader(token.asHeaders():_*)
-        .execute[HttpResponse]
-        .map { response =>
-          response.status match {
-            case 200 =>
-              (response.json \\ "teams").headOption
-                .map(_.as[Seq[Team]])
-                .fold[Either[UMPError, Seq[Team]]](ifEmpty = Left(UMPError.ConnectionError(s"Could not parse response from $url")))(Right.apply)
-            case httpCode => Left(UMPError.HTTPError(httpCode))
-          }
-        }
-        .recover {
-          case ex =>
-            logger.error(s"An error occurred when connecting to $url", ex)
-            Left(UMPError.ConnectionError(s"Could not connect to $url: ${ex.getMessage}"))
-        }
+        .execute[UmpTeams]
+        .map(_.teams)
     } yield resp
-  }.recover {
-    case ex =>
-      logger.error(s"Failed to login to UMP", ex)
-      Left(UMPError.ConnectionError(s"Failed to login to UMP: ${ex.getMessage}"))
   }
 
+  def getMembersForTeam(teamName: String)(implicit hc: HeaderCarrier): Future[Option[Seq[TeamMember]]] = {
+    val url = url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members"
+    implicit val uf = TeamMember.reads
 
-
-
+    for {
+      token <- retrieveToken()
+      resp <- httpClientV2
+        .get(url)
+        .setHeader(token.asHeaders():_*)
+        .execute[Option[UmpTeamMembers]]
+        .map(_.map(_.members))
+        .recover {
+          case UpstreamErrorResponse.WithStatusCode(422) =>
+            logger.warn(s"Received a 422 response when getting membersForTeam for teamname: $teamName. " +
+              s"This is a known issue that can occur when a team has been created in UMP with invalid characters in its name.")
+            None
+          case UpstreamErrorResponse.WithStatusCode(404) =>
+            logger.warn(s"Received a 404 response when getting membersForTeam for teamname: $teamName. " +
+              s"This indicates the team does not exist within UMP.")
+            None
+        }
+    } yield resp
+  }
 }
 
 object UserManagementConnector {
+
+  implicit val uf = User.format
+  implicit val tf = Team.umpReads
+  implicit val tmr = TeamMember.reads
 
   sealed trait UmpToken {
     def asHeaders(): Seq[(String, String)]
@@ -143,19 +147,27 @@ object UserManagementConnector {
         )(UmpLoginRequest.apply, unlift(UmpLoginRequest.unapply))
   }
 
-  sealed trait UMPError {
-    def errorMsg: String = ???
+  case class UmpUsers(
+    users: Seq[User]
+  )
+
+  object UmpUsers {
+    implicit val reads: Reads[UmpUsers] = Json.reads[UmpUsers]
   }
 
-  object UMPError {
-    case object UnknownTeam                    extends UMPError {
-      override def errorMsg: String = "Unknown team provided to the UMP API"
-    }
-    case class  HTTPError(code: Int)           extends UMPError {
-      override def errorMsg: String = s"Received a $code status code from the UMP API"
-    }
-    case class  ConnectionError(error: String) extends UMPError {
-      override def errorMsg: String = error
-    }
+  case class UmpTeams(
+    teams: Seq[Team]
+  )
+
+  object UmpTeams {
+    implicit val reads: Reads[UmpTeams] = Json.reads[UmpTeams]
+  }
+
+  case class UmpTeamMembers(
+    members: Seq[TeamMember]
+  )
+
+  object UmpTeamMembers {
+      implicit val reads: Reads[UmpTeamMembers] = Json.reads[UmpTeamMembers]
   }
 }

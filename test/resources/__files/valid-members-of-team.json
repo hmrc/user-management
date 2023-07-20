@@ -1,0 +1,25 @@
+{
+  "members": [
+    {
+      "displayName": "Joe Bloggs",
+      "familyName": "Bloggs",
+      "givenName": "Joe",
+      "phoneNumber": "12345678912",
+      "primaryEmail": "joe.bloggs@gmail.com",
+      "username": "joe.bloggs",
+      "organisation": "MDTP",
+      "github": "https://github.com/hmrc",
+      "role": "team_admin"
+    },
+    {
+      "displayName": "Jane Doe",
+      "familyName": "Doe",
+      "givenName": "Jane",
+      "primaryEmail": "jane.doe@gmail.com",
+      "username": "jane.doe",
+      "role": "user"
+    }
+  ],
+  "slack": "https://slack.com",
+  "team": "PlatOps"
+}
