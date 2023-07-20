@@ -20,7 +20,14 @@ import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json.{OFormat, Reads, __}
 
 sealed trait Identity {
-  def username: String
+  def displayName : Option[String]
+  def familyName  : String
+  def givenName   : Option[String]
+  def organisation: Option[String]
+  def primaryEmail: String
+  def username    : String
+  def github      : Option[String]
+  def phoneNumber : Option[String]
 }
 
 case class User(
@@ -80,7 +87,7 @@ case class TeamMember(
 object TeamMember {
 
   val reads: Reads[TeamMember] = {
-    (( __ \ "displayName"   ).readNullable[String]
+    (( __ \ "displayName"    ).readNullable[String]
       ~ ( __ \ "familyName"  ).read[String]
       ~ ( __ \ "givenName"   ).readNullable[String]
       ~ ( __ \ "organisation").readNullable[String]
