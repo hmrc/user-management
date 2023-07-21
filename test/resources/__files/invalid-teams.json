@@ -1,0 +1,16 @@
+{
+  "teams": [
+    {
+      "members": [],
+      "team": 12,
+      "slack": "https://slackchannel.com",
+      "slackNotification": "https://slackchannel2.com",
+      "description": "A great team",
+      "documentation": "Confluence"
+    },
+    {
+      "team": "Other Team",
+      "members": {}
+    }
+  ]
+}
