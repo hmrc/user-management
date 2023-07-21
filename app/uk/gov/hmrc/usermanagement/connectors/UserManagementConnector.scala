@@ -16,35 +16,35 @@
 
 package uk.gov.hmrc.usermanagement.connectors
 
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import play.api.cache.AsyncCacheApi
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json.{Json, OFormat, Reads, __}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.config.{UserManagementAuthConfig, UserManagementPortalConfig}
-import uk.gov.hmrc.usermanagement.model.{Team, TeamMember, User}
+import uk.gov.hmrc.usermanagement.model.{Team, User}
 
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
  class UserManagementConnector @Inject()(
-  umpConfig     : UserManagementPortalConfig,
+  config        : Configuration,
   httpClientV2  : HttpClientV2,
-  authConfig    : UserManagementAuthConfig,
   tokenCache    : AsyncCacheApi
 )(implicit ec: ExecutionContext) extends Logging {
 
-  import umpConfig._
+  val userManagementBaseUrl : String   = config.get[String]("ump.baseUrl")
+  val userManagementLoginUrl: String   = config.get[String]("ump.loginUrl")
+  val tokenTTL              : Duration = config.get[Duration]("ump.auth.tokenTTL")
+  val username              : String   = config.get[String]("ump.auth.username")
+  val password              : String   = config.get[String]("ump.auth.password")
+
   import UserManagementConnector._
-  import authConfig._
 
   def retrieveToken(): Future[UmpToken] =
-    if (authEnabled)
       tokenCache.getOrElseUpdate[UmpToken]("token", tokenTTL)(login())
-    else
-      Future.successful(NoTokenRequired)
 
   def login(): Future[UmpAuthToken] = {
     implicit val lrf: OFormat[UmpLoginRequest] = UmpLoginRequest.format
@@ -60,7 +60,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
   def getAllUsers()(implicit hc: HeaderCarrier): Future[Seq[User]] = {
     val url = url"$userManagementBaseUrl/v2/organisations/users"
-    implicit val uf = User.format
 
     for {
       token <- retrieveToken()
@@ -70,11 +69,13 @@ import scala.concurrent.{ExecutionContext, Future}
         .execute[UmpUsers]
         .map(_.users)
     } yield resp
+      .filterNot { user =>
+        nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
+      }
   }
 
   def getAllTeams()(implicit hc: HeaderCarrier): Future[Seq[Team]] = {
     val url = url"$userManagementBaseUrl/v2/organisations/teams"
-    implicit val uf = Team.umpReads
 
     for {
       token <- retrieveToken()
@@ -86,17 +87,16 @@ import scala.concurrent.{ExecutionContext, Future}
     } yield resp
   }
 
-  def getMembersForTeam(teamName: String)(implicit hc: HeaderCarrier): Future[Option[Seq[TeamMember]]] = {
+  def getTeamWithMembers(teamName: String)(implicit hc: HeaderCarrier): Future[Option[Team]] = {
     val url = url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members"
-    implicit val uf = TeamMember.reads
+    implicit val uf = Team.umpReads
 
     for {
       token <- retrieveToken()
       resp <- httpClientV2
         .get(url)
         .setHeader(token.asHeaders():_*)
-        .execute[Option[UmpTeamMembers]]
-        .map(_.map(_.members))
+        .execute[Option[Team]]
         .recover {
           case UpstreamErrorResponse.WithStatusCode(422) =>
             logger.warn(s"Received a 422 response when getting membersForTeam for teamname: $teamName. " +
@@ -107,15 +107,20 @@ import scala.concurrent.{ExecutionContext, Future}
               s"This indicates the team does not exist within UMP.")
             None
         }
-    } yield resp
+    } yield resp.map { team =>
+      team.copy(members = team.members.filterNot { member =>
+        nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_))
+      })
+    }
   }
 }
 
 object UserManagementConnector {
 
+  val nonHumanIdentifiers: Seq[String] = Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
+
   implicit val uf = User.format
   implicit val tf = Team.umpReads
-  implicit val tmr = TeamMember.reads
 
   sealed trait UmpToken {
     def asHeaders(): Seq[(String, String)]
@@ -161,13 +166,5 @@ object UserManagementConnector {
 
   object UmpTeams {
     implicit val reads: Reads[UmpTeams] = Json.reads[UmpTeams]
-  }
-
-  case class UmpTeamMembers(
-    members: Seq[TeamMember]
-  )
-
-  object UmpTeamMembers {
-      implicit val reads: Reads[UmpTeamMembers] = Json.reads[UmpTeamMembers]
   }
 }

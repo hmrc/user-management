@@ -31,16 +31,16 @@ class UserRepositorySpec
 
   override lazy val repository = new UsersRepository(mongoComponent)
 
-  "UsersRepository.insertOrReplaceMany" should {
-    "Insert or replace documents" in {
+  "UsersRepository.deleteOldAndInsertNewUsers" should {
+    "delete the existing users, and insert new users into the collection" in {
       repository.collection.insertOne(
         User(
-          displayName = Some("Joe Bloggs"),
-          familyName = "Bloggs",
-          givenName = Some("Joe"),
+          displayName = Some("Old User"),
+          familyName = "Old",
+          givenName = Some("User"),
           organisation = Some("MDTP"),
-          primaryEmail = "joe.bloggs@gmail.com",
-          username = "joe.bloggs",
+          primaryEmail = "old-user@gmail.com",
+          username = "old-user",
           github = None,
           phoneNumber = None,
           teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user"))),
@@ -69,44 +69,13 @@ class UserRepositorySpec
           teamsAndRoles = None),
       )
 
-      repository.replaceOrInsertMany(latestUsers).futureValue
+      repository.deleteOldAndInsertNewUsers(latestUsers).futureValue
 
       val res = repository.findAll().futureValue
       res.length shouldBe 2
 
-      res should contain theSameElementsAs(latestUsers)
+      res should contain theSameElementsAs latestUsers
     }
 
-    "Delete many" in {
-      repository.collection.insertMany(
-        Seq(User(
-            displayName = Some("Joe Bloggs"),
-            familyName = "Bloggs",
-            givenName = Some("Joe"),
-            organisation = Some("MDTP"),
-            primaryEmail = "joe.bloggs@gmail.com",
-            username = "joe.bloggs",
-            github = None,
-            phoneNumber = None,
-            teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team2", role = "team-admin")))),
-          User(
-            displayName = Some("Jane Doe"),
-            familyName = "Doe",
-            givenName = Some("Jane"),
-            organisation = Some("MDTP"),
-            primaryEmail = "jane.doe@gmail.com",
-            username = "jane.doe",
-            github = None,
-            phoneNumber = None,
-            teamsAndRoles = None),
-        )).toFuture().futureValue
-
-      repository.deleteMany(Seq("joe.bloggs", "jane.doe")).futureValue
-
-      val res = repository.findAll().futureValue
-
-      res.length shouldBe 0
-      res shouldBe Seq.empty[User]
-    }
   }
 }

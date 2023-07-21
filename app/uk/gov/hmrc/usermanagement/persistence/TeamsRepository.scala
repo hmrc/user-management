@@ -16,58 +16,42 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model
 import org.mongodb.scala.model.Filters.equal
-import org.mongodb.scala.model.{DeleteOneModel, Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import uk.gov.hmrc.usermanagement.model.{Team, User}
+import uk.gov.hmrc.mongo.transaction.{TransactionConfiguration, Transactions}
+import uk.gov.hmrc.usermanagement.model.Team
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class TeamsRepository @Inject()(
-                                 mongoComponent: MongoComponent,
-                               )(implicit
-                                 ec            : ExecutionContext
-                               ) extends PlayMongoRepository(
+ override val mongoComponent: MongoComponent,
+)(implicit
+ ec            : ExecutionContext
+) extends PlayMongoRepository(
   collectionName = "teams",
   mongoComponent = mongoComponent,
   domainFormat   = Team.format,
   indexes        = Seq(
     IndexModel(Indexes.ascending("teamName"),IndexOptions().unique(true).background(true)),
   )
-) {
+) with Transactions {
   // No ttl required for this collection - gets updated on a scheduler every 20 minutes, and stale data will be deleted
   // during scheduler run
   override lazy val requiresTtlIndex = false
 
-  def replaceOrInsertMany(teams: Seq[Team]): Future[Unit] = {
-    val bulkWrites = teams.map(team =>
-      ReplaceOneModel(
-        Filters.equal("teamName", team.teamName),
-        team,
-        ReplaceOptions().upsert(true)
-      )
-    )
-    collection.bulkWrite(bulkWrites).toFuture().map(_ => ())
-  }
+  private implicit val tc = TransactionConfiguration.strict
 
-  def deleteMany(teamNames: Seq[String]): Future[Unit] = {
-    val bulkWrites = teamNames.map(tn =>
-      DeleteOneModel(
-        equal("teamName", tn)
-      )
+  def deleteOldAndInsertNewTeams(teams: Seq[Team]): Future[Unit] =
+    withSessionAndTransaction (session =>
+      for {
+        _  <- collection.deleteMany(session, Filters.empty()).toFuture()
+        _  <- collection.insertMany(session, teams).toFuture().map(_ => ())
+      } yield ()
     )
-
-    if(bulkWrites.isEmpty)
-      Future.unit
-    else
-      collection.bulkWrite(bulkWrites)
-        .toFuture()
-        .map(_ => ())
-  }
 
   def findAll(): Future[Seq[Team]] =
     collection

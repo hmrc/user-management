@@ -20,7 +20,7 @@ import cats.implicits.toFoldableOps
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.UserManagementConnector
-import uk.gov.hmrc.usermanagement.model.{Identity, Member, Team, TeamAndRole, TeamMember, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamAndRole, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -35,49 +35,27 @@ class DataRefreshService @Inject()(
 
   def updateUsersAndTeams()(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Unit] = {
     for {
-      //Get latestData from UMP
-      latestUmpUsers          <- userManagementConnector.getAllUsers()
-      latestUmpUsernames      =  latestUmpUsers.map(_.username)
-      latestUmpTeams          <- userManagementConnector.getAllTeams()
-      latestUmpTeamNames      =  latestUmpTeams.map(_.teamName)
+      umpUsers                <- userManagementConnector.getAllUsers()
+      umpTeamNames            <- userManagementConnector.getAllTeams().map(_.map(_.teamName))
       _                       =  logger.info("Successfully retrieved the latest users and teams data from UMP")
-      //Get current data from mongo collections.
-      currentUsernames        <- usersRepository.findAllUsernames()
-      currentTeamNames        <- teamsRepository.findAllTeamNames()
-      //Calculate users and teams to be deleted (as they weren't in latest UMP data).
-      usersToDelete           =  currentUsernames.filterNot(latestUmpUsernames.contains(_))
-      teamsToDelete           =  currentTeamNames.filterNot(latestUmpTeamNames.contains(_))
-      //Shape data to desired format
-      humanUsers              =  removeNonHumanIdentities(latestUmpUsers)
-      _                       =  logger.info(s"Removed ${latestUmpUsers.length - humanUsers.length} non-human users from the UMP data.")
-      finalTeams              <- getFinalTeams(latestUmpTeams)
-      finalUsers              =  addTeamAndRolesToUsers(humanUsers, finalTeams)
-      //Update mongo collections
-      _                       <- usersRepository.replaceOrInsertMany(finalUsers)
-      _                       <- teamsRepository.replaceOrInsertMany(finalTeams)
-      _                       =  logger.info(s"The following users are no longer in UMP, and will be deleted from the collection: ${usersToDelete.mkString}")
-      _                       <- usersRepository.deleteMany(usersToDelete)
-      _                       =  logger.info(s"The following teams are no longer in UMP, and will be deleted from the collection: ${teamsToDelete.mkString}")
-      _                       <- teamsRepository.deleteMany(teamsToDelete)
-      _                       =  logger.info("Successfully refreshed teams and users data from UMP.")
+      teamsWithMembers        <- getTeamsWithMembers(umpTeamNames)
+      usersWithTeamsAndRoles  =  addTeamAndRolesToUsers(umpUsers, teamsWithMembers)
+      _                       =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithTeamsAndRoles.length} " +
+                                  s"human users into their respective repositories")
+      _                       <- usersRepository.deleteOldAndInsertNewUsers(usersWithTeamsAndRoles)
+      _                       =  logger.info("Successfully refreshed users data from UMP.")
+      _                       <- teamsRepository.deleteOldAndInsertNewTeams(teamsWithMembers)
+      _                       =  logger.info("Successfully refreshed teams data from UMP.")
     } yield ()
   }
 
-
-  //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams/GetAllUsers calls.
-  //GetAllTeams also has a bug, in which the `members` field always returns an empty array.
-  private def getFinalTeams(teams: Seq[Team])(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Seq[Team]] =
-    teams.foldLeftM[Future,  Seq[Team]](Seq.empty[Team]) {
-      case (updatedTeams, team) =>
-        for {
-          teamMembers      <- userManagementConnector.getMembersForTeam(team.teamName).map {
-                                case Some(tm) => tm
-                                case None     => Seq.empty
-                              }
-          humanTeamMembers = removeNonHumanIdentities(teamMembers)
-          asMembers        = humanTeamMembers.map(tm => Member(tm.username, tm.role)).sortBy(_.username)
-          newTeam          = team.copy(members = asMembers)
-        } yield updatedTeams :+ newTeam
+  //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
+  //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
+  private def getTeamsWithMembers(teams: Seq[String])(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Seq[Team]] =
+    teams.foldLeftM[Future,  Seq[Team]](Seq.empty[Team]) { (teamsWithMembers, teamName) =>
+        userManagementConnector.getTeamWithMembers(teamName).map(
+          team => team.fold(teamsWithMembers)(team => teamsWithMembers :+ team)
+        )
     }
 
   private def addTeamAndRolesToUsers(users: Seq[User], teams: Seq[Team]): Seq[User] = {
@@ -89,10 +67,5 @@ class DataRefreshService @Inject()(
         user.copy(teamsAndRoles   = Some(teamsAndRolesForUser))
     }
   }
-
-  private val nonHumanIdentifiers: Seq[String] = Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
-
-  private def removeNonHumanIdentities[A <: Identity](identities: Seq[A]): Seq[A] =
-    identities.filterNot(user => nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_)))
 
 }

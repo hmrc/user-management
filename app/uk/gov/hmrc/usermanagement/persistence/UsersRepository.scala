@@ -17,9 +17,10 @@
 package uk.gov.hmrc.usermanagement.persistence
 
 import org.mongodb.scala.model.Filters.equal
-import org.mongodb.scala.model.{DeleteOneModel, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
+import uk.gov.hmrc.mongo.transaction.{TransactionConfiguration, Transactions}
 import uk.gov.hmrc.usermanagement.model.User
 
 import javax.inject.{Inject, Singleton}
@@ -27,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class UsersRepository @Inject()(
- mongoComponent: MongoComponent,
+ override val mongoComponent: MongoComponent,
 )(implicit
  ec            : ExecutionContext
 ) extends PlayMongoRepository(
@@ -37,40 +38,21 @@ class UsersRepository @Inject()(
   indexes        = Seq(
     IndexModel(Indexes.ascending("username"),IndexOptions().unique(true).background(true)),
   )
-) {
+) with Transactions {
 
   // No ttl required for this collection - gets updated on a scheduler every 20 minutes, and stale data will be deleted
   // during scheduler run
   override lazy val requiresTtlIndex = false
 
-  def replaceOrInsertMany(users: Seq[User]): Future[Unit] = {
-    val bulkWrites = users.map(user =>
-      ReplaceOneModel(
-        equal("username", user.username),
-        user,
-        ReplaceOptions().upsert(true)
-      )
+  private implicit val tc = TransactionConfiguration.strict
+
+  def deleteOldAndInsertNewUsers(users: Seq[User]): Future[Unit] =
+    withSessionAndTransaction (session =>
+      for {
+        _  <- collection.deleteMany(session, Filters.empty()).toFuture()
+        _  <- collection.insertMany(session, users).toFuture().map(_ => ())
+      } yield ()
     )
-
-    collection.bulkWrite(bulkWrites)
-      .toFuture()
-      .map(_ => ())
-  }
-
-  def deleteMany(usernames: Seq[String]): Future[Unit] = {
-    val bulkWrites = usernames.map(u =>
-      DeleteOneModel(
-        equal("username", u)
-      )
-    )
-
-    if(bulkWrites.isEmpty)
-      Future.unit
-    else
-      collection.bulkWrite(bulkWrites)
-        .toFuture()
-        .map(_ => ())
-  }
 
   def findAll(): Future[Seq[User]] =
     collection

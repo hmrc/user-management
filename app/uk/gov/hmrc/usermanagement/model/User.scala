@@ -17,18 +17,7 @@
 package uk.gov.hmrc.usermanagement.model
 
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{OFormat, Reads, __}
-
-sealed trait Identity {
-  def displayName : Option[String]
-  def familyName  : String
-  def givenName   : Option[String]
-  def organisation: Option[String]
-  def primaryEmail: String
-  def username    : String
-  def github      : Option[String]
-  def phoneNumber : Option[String]
-}
+import play.api.libs.json.{OFormat, __}
 
 case class User(
   displayName  : Option[String],
@@ -40,7 +29,7 @@ case class User(
   github       : Option[String],
   phoneNumber  : Option[String],
   teamsAndRoles: Option[Seq[TeamAndRole]]
-) extends Identity
+)
 
 object User {
   implicit val urf = TeamAndRole.format
@@ -71,32 +60,3 @@ object TeamAndRole {
     )(TeamAndRole.apply, unlift(TeamAndRole.unapply))
   }
 }
-
-case class TeamMember(
-  displayName  : Option[String],
-  familyName   : String,
-  givenName    : Option[String],
-  organisation : Option[String],
-  primaryEmail : String,
-  username     : String,
-  github       : Option[String],
-  phoneNumber  : Option[String],
-  role         : String
-) extends Identity
-
-object TeamMember {
-
-  val reads: Reads[TeamMember] = {
-    (( __ \ "displayName"    ).readNullable[String]
-      ~ ( __ \ "familyName"  ).read[String]
-      ~ ( __ \ "givenName"   ).readNullable[String]
-      ~ ( __ \ "organisation").readNullable[String]
-      ~ ( __ \ "primaryEmail").read[String]
-      ~ ( __ \ "username"    ).read[String]
-      ~ ( __ \ "github"      ).readNullable[String]
-      ~ ( __ \ "phoneNumber" ).readNullable[String]
-      ~ ( __ \ "role"        ).read[String]
-      )(TeamMember.apply _)
-  }
-}
-

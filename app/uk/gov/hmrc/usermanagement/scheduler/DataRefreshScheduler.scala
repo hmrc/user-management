@@ -38,7 +38,7 @@ class DataRefreshScheduler @Inject()(
   ec                  : ExecutionContext
 ) extends SchedulerUtils with Logging {
 
-  private val dataRefreshLock: LockService     = LockService(mongoLockRepository, "vuln-data-reload-lock", 10.minutes)
+  private val dataRefreshLock: LockService     = LockService(mongoLockRepository, "user-management-data-refresh-lock", 10.minutes)
 
   scheduleWithLock("User Management Data Refresh", config.dataRefreshScheduler, dataRefreshLock) {
     implicit val hc: HeaderCarrier = HeaderCarrier()

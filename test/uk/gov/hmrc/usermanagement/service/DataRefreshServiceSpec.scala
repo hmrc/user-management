@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.UserManagementConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamAndRole, TeamMember, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamAndRole, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import scala.concurrent.Future
@@ -55,33 +55,33 @@ class DataRefreshServiceSpec
           Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
         )))
 
-      when(userManagementConnector.getMembersForTeam("team1"))
-        .thenReturn(Future.successful(Some(Seq(TeamMember(
-          displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, role = "user"
-        )))))
+      when(userManagementConnector.getTeamWithMembers("team1"))
+        .thenReturn(Future.successful(Some(
+          Team(
+            members = Seq(Member("joe.bloggs", "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
+          )
+        )))
 
-      when(userManagementConnector.getMembersForTeam("team2"))
-        .thenReturn(Future.successful(Some(Seq(TeamMember(
-          displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, role = "team-admin"
-        )))))
+      when(userManagementConnector.getTeamWithMembers("team2"))
+        .thenReturn(Future.successful(Some(
+          Team(
+            members = Seq(Member("jane.doe", "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
+          )
+        )))
 
-      when(userManagementConnector.getMembersForTeam("team3"))
-        .thenReturn(Future.successful(Some(Seq.empty)))
-
-      when(usersRepository.findAllUsernames())
-        .thenReturn(Future.successful(Seq.empty))
-
-      when(teamsRepository.findAllTeamNames())
-        .thenReturn(Future.successful(Seq.empty))
+      when(userManagementConnector.getTeamWithMembers("team3"))
+        .thenReturn(Future.successful(Some(Team(
+          members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
+        ))))
 
       service.updateUsersAndTeams().futureValue
 
-      verify(usersRepository).replaceOrInsertMany(Seq(
+      verify(usersRepository).deleteOldAndInsertNewUsers(Seq(
         User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user")))),
         User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team2", role = "team-admin")))),
       ))
 
-      verify(teamsRepository).replaceOrInsertMany(Seq(
+      verify(teamsRepository).deleteOldAndInsertNewTeams(Seq(
         Team(members = Seq(Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq(Member(username = "jane.doe", role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
@@ -102,30 +102,28 @@ class DataRefreshServiceSpec
           Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
         )))
 
-      when(userManagementConnector.getMembersForTeam("team1"))
-        .thenReturn(Future.successful(Some(Seq(
-          TeamMember(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, role = "user"),
-          TeamMember(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, role = "team-admin")
+      when(userManagementConnector.getTeamWithMembers("team1"))
+        .thenReturn(Future.successful(Some(
+          Team(
+            members = Seq(Member("jane.doe", "team-admin"), Member("joe.bloggs", "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
+          )
+        )))
+
+      when(userManagementConnector.getTeamWithMembers("team2"))
+        .thenReturn(Future.successful(Some(
+          Team(
+            members = Seq(Member("jane.doe", "user"), Member("joe.bloggs", "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
+          )
+        )))
+
+      when(userManagementConnector.getTeamWithMembers("team3"))
+        .thenReturn(Future.successful(Some(Team(
+          members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
-
-      when(userManagementConnector.getMembersForTeam("team2"))
-        .thenReturn(Future.successful(Some(Seq(
-          TeamMember(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, role = "user"),
-          TeamMember(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, role = "team-admin"),
-        ))))
-
-      when(userManagementConnector.getMembersForTeam("team3"))
-        .thenReturn(Future.successful(Some(Seq.empty)))
-
-      when(usersRepository.findAllUsernames())
-        .thenReturn(Future.successful(Seq.empty))
-
-      when(teamsRepository.findAllTeamNames())
-        .thenReturn(Future.successful(Seq.empty))
 
       service.updateUsersAndTeams().futureValue
 
-      verify(usersRepository).replaceOrInsertMany(Seq(
+      verify(usersRepository).deleteOldAndInsertNewUsers(Seq(
         User(
           displayName = Some("Joe Bloggs"),
           familyName = "Bloggs",
@@ -148,95 +146,11 @@ class DataRefreshServiceSpec
           teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "team-admin"), TeamAndRole(teamName = "team2", role = "user")))),
       ))
 
-      verify(teamsRepository).replaceOrInsertMany(Seq(
+      verify(teamsRepository).deleteOldAndInsertNewTeams(Seq(
         Team(members = Seq(Member(username = "jane.doe", role = "team-admin"), Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq(Member(username = "jane.doe", role = "user"), Member(username = "joe.bloggs", role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
-    }
-
-    "Discard non-human users during a data refresh " in new Setup {
-      when(userManagementConnector.getAllUsers())
-        .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot1", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "Service_account", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot2", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "PlatOps", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot3", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "Build", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot4", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "DEPLOY", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot5", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "deskPro", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot6", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "DDCOPS", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = None, familyName = "robot7", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "PlatSEC", github = None, phoneNumber = None, teamsAndRoles = None),
-        )))
-
-      when(userManagementConnector.getAllTeams())
-        .thenReturn(Future.successful(Seq(
-          Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        )))
-
-      when(userManagementConnector.getMembersForTeam("team1"))
-        .thenReturn(Future.successful(Some(Seq(
-          TeamMember(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, role = "user"),
-          TeamMember(displayName = None, familyName = "robot1", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "Service_account", github = None, phoneNumber = None, role = "user"),
-          TeamMember(displayName = None, familyName = "robot2", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "PlatOps", github = None, phoneNumber = None, role = "team-admin"),
-          TeamMember(displayName = None, familyName = "robot3", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "Build", github = None, phoneNumber = None, role = "user"),
-          TeamMember(displayName = None, familyName = "robot4", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "DEPLOY", github = None, phoneNumber = None, role = "team-admin"),
-          TeamMember(displayName = None, familyName = "robot5", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "deskPro", github = None, phoneNumber = None, role = "user"),
-          TeamMember(displayName = None, familyName = "robot6", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "DDCOPS", github = None, phoneNumber = None, role = "team-admin"),
-          TeamMember(displayName = None, familyName = "robot7", givenName = None, organisation = None, primaryEmail = "test@gmail.com", username = "PlatSEC", github = None, phoneNumber = None, role = "user")
-        ))))
-
-      when(usersRepository.findAllUsernames())
-        .thenReturn(Future.successful(Seq.empty))
-
-      when(teamsRepository.findAllTeamNames())
-        .thenReturn(Future.successful(Seq.empty))
-
-      service.updateUsersAndTeams().futureValue
-
-      verify(usersRepository).replaceOrInsertMany(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user")))),
-      ))
-
-      verify(teamsRepository).replaceOrInsertMany(Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-      ))
-    }
-
-    "Delete users/teams that are no longer present in UMP" in new Setup {
-
-      when(userManagementConnector.getAllUsers())
-        .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = None),
-        )))
-
-      when(userManagementConnector.getAllTeams())
-        .thenReturn(Future.successful(Seq(
-          Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        )))
-
-      when(userManagementConnector.getMembersForTeam("team1"))
-        .thenReturn(Future.successful(Some(Seq(
-          TeamMember(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, role = "user")
-        ))))
-
-      when(usersRepository.findAllUsernames())
-        .thenReturn(Future.successful(Seq("joe.bloggs", "jane.doe")))
-
-      when(teamsRepository.findAllTeamNames())
-        .thenReturn(Future.successful(Seq("team1", "team2")))
-
-      service.updateUsersAndTeams().futureValue
-
-      verify(usersRepository).replaceOrInsertMany(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user")))),
-      ))
-
-      verify(teamsRepository).replaceOrInsertMany(Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-      ))
-
-      verify(usersRepository).deleteMany(Seq("jane.doe"))
-      verify(teamsRepository).deleteMany(Seq("team2"))
     }
   }
 }
@@ -248,16 +162,9 @@ trait Setup {
 
   val service = new DataRefreshService(userManagementConnector, usersRepository, teamsRepository)
 
-  when(teamsRepository.replaceOrInsertMany(any[Seq[Team]]))
+  when(teamsRepository.deleteOldAndInsertNewTeams(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
 
-  when(usersRepository.replaceOrInsertMany(any[Seq[User]]))
+  when(usersRepository.deleteOldAndInsertNewUsers(any[Seq[User]]))
     .thenReturn(Future.successful( () ))
-
-  when(teamsRepository.deleteMany(any[Seq[String]]))
-    .thenReturn(Future.successful( () ))
-
-  when(usersRepository.deleteMany(any[Seq[String]]))
-    .thenReturn(Future.successful( () ))
-
 }

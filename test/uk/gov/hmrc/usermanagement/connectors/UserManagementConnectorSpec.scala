@@ -16,24 +16,17 @@
 
 package uk.gov.hmrc.usermanagement.connectors
 
-import akka.Done
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, stubFor, urlEqualTo}
-import org.scalatest.EitherValues
+import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import play.api.Configuration
-import play.api.cache.AsyncCacheApi
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
+import play.api.Application
+import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
-import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.usermanagement.config.{UserManagementAuthConfig, UserManagementPortalConfig}
-import uk.gov.hmrc.usermanagement.model.{Team, TeamMember, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 import uk.gov.hmrc.usermanagement.test.UnitSpec
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration
-import scala.reflect.ClassTag
 
 class UserManagementConnectorSpec
   extends UnitSpec
@@ -42,29 +35,36 @@ class UserManagementConnectorSpec
     with IntegrationPatience
     with HttpClientV2Support
     with EitherValues
+    with BeforeAndAfterEach
+    with GuiceOneServerPerSuite
 {
 
     override lazy val wireMockRootDirectory = "test/resources"
 
     implicit val hc = HeaderCarrier()
 
-    val cache = new AsyncCacheApi {
-      override def set(key: String, value: Any, expiration: Duration): Future[Done] = ???
-      override def remove(key: String): Future[Done] = ???
-      override def getOrElseUpdate[A](key: String, expiration: Duration)(orElse: =>Future[A])(implicit evidence$1: ClassTag[A]): Future[A] = ???
-      override def get[T](key: String)(implicit evidence$2: ClassTag[T]): Future[Option[T]] = ???
-      override def removeAll(): Future[Done] = ???
-    }
+    override def fakeApplication(): Application =
+      new GuiceApplicationBuilder()
+        .configure(
+          "microservice.services.user-management.port"       -> wireMockPort,
+          "microservice.services.user-management.host"       -> wireMockHost,
+          "play.http.requestHandler"                         -> "play.api.http.DefaultHttpRequestHandler",
+          "metrics.jvm"                                      -> false,
+          "ump.auth.username"                                -> "user",
+          "ump.auth.password"                                -> "pass",
+          "ump.auth.tokenTTL"                                -> "1 hour",
+          "ump.loginUrl"                                     -> s"$wireMockUrl/v1/login",
+          "ump.baseUrl"                                      -> s"$wireMockUrl",
+        )
+        .build()
 
-    val servicesConfig = new ServicesConfig(Configuration("microservice.services.user-management.url" -> wireMockUrl))
-    val authConfig     = new UserManagementAuthConfig(Configuration("ump.auth.enabled" -> false))
-    val umpConfig      = new UserManagementPortalConfig(servicesConfig)
 
-    lazy val userManagementConnector = new UserManagementConnector(umpConfig, httpClientV2, authConfig, cache)
+    private val userManagementConnector: UserManagementConnector =
+      app.injector.instanceOf[UserManagementConnector]
 
     "getAllUsers" when {
       "parsing a valid response" should {
-        "return a sequence of Users" in {
+        "return a sequence of Users" in new Setup {
           stubFor(
             WireMock.get(urlEqualTo("/v2/organisations/users"))
               .willReturn(
@@ -84,7 +84,7 @@ class UserManagementConnectorSpec
       }
 
       "parsing an invalid JSON response" should {
-        "throw a JSValidationException" in {
+        "throw a JSValidationException" in new Setup {
           stubFor(
             WireMock.get(urlEqualTo("/v2/organisations/users"))
               .willReturn(
@@ -100,7 +100,7 @@ class UserManagementConnectorSpec
       }
 
       "it receives a non 200 status code response" should {
-        "return an UpstreamErrorResponse" in {
+        "return an UpstreamErrorResponse" in new Setup {
           stubFor(
             WireMock.get(urlEqualTo("/v2/organisations/users"))
               .willReturn(
@@ -113,11 +113,32 @@ class UserManagementConnectorSpec
           res shouldBe a [UpstreamErrorResponse]
         }
       }
+
+      "the response contains non-human users" should {
+        "filter out any non-human users" in new Setup {
+          stubFor(
+            WireMock.get(urlEqualTo("/v2/organisations/users"))
+              .willReturn(
+                aResponse()
+                  .withStatus(200)
+                  .withBodyFile("non-human-users.json")
+              )
+          )
+
+          val res = userManagementConnector.getAllUsers().futureValue
+
+          res.length shouldBe 2
+          res should contain theSameElementsAs Seq(
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = Some("https://github.com/hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
+            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = None)
+          )
+        }
+      }
     }
 
   "getAllTeams" when {
     "parsing a valid response" should {
-      "return a sequence of Teams" in {
+      "return a sequence of Teams" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams"))
             .willReturn(
@@ -138,7 +159,7 @@ class UserManagementConnectorSpec
 
 
     "parsing an invalid JSON response" should {
-      "throw a JSValidationException" in {
+      "throw a JSValidationException" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams"))
             .willReturn(
@@ -154,7 +175,7 @@ class UserManagementConnectorSpec
     }
 
     "it receives a non 200 status code response" should {
-      "return an UpstreamErrorResponse" in {
+      "return an UpstreamErrorResponse" in new Setup{
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams"))
             .willReturn(
@@ -171,7 +192,7 @@ class UserManagementConnectorSpec
 
   "getMembersForTeam" when {
     "parsing a valid response" should {
-      "return a sequence of TeamMembers" in {
+      "return a Team" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
             .willReturn(
@@ -181,17 +202,22 @@ class UserManagementConnectorSpec
             )
         )
 
-        val res = userManagementConnector.getMembersForTeam("PlatOps").futureValue
+        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
 
-        res.get should contain theSameElementsAs Seq(
-          TeamMember(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = Some("https://github.com/hmrc"), phoneNumber = Some("12345678912"), role = "team_admin"),
-          TeamMember(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, role = "user")
-        )
+        res shouldBe Some(Team(
+          members = Seq(Member(username = "joe.bloggs", role = "team_admin"), Member(username = "jane.doe", role = "user")),
+          teamName = "PlatOps",
+          description = None,
+          documentation = None,
+          slack = Some("https://slack.com"),
+          slackNotification = None
+        ))
+
       }
     }
 
     "parsing an invalid JSON response" should {
-      "throw a JSValidationException" in {
+      "throw a JSValidationException" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
             .willReturn(
@@ -201,13 +227,13 @@ class UserManagementConnectorSpec
             )
         )
 
-        val res = userManagementConnector.getMembersForTeam("PlatOps").failed.futureValue
+        val res = userManagementConnector.getTeamWithMembers("PlatOps").failed.futureValue
         res shouldBe a [JsValidationException]
       }
     }
 
     "it receives a 404 status code response" should {
-      "recover with a None" in {
+      "recover with a None" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
             .willReturn(
@@ -216,13 +242,13 @@ class UserManagementConnectorSpec
             )
         )
 
-        val res = userManagementConnector.getMembersForTeam("PlatOps").futureValue
+        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
         res shouldBe None
       }
     }
 
     "it receives a 422 status code response" should {
-      "recover with a None" in {
+      "recover with a None" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
             .willReturn(
@@ -231,13 +257,13 @@ class UserManagementConnectorSpec
             )
         )
 
-        val res = userManagementConnector.getMembersForTeam("PlatOps").futureValue
+        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
         res shouldBe None
       }
     }
 
     "it receives any other non 200 status code response" should {
-      "return an UpstreamErrorResponse" in {
+      "return an UpstreamErrorResponse" in new Setup {
         stubFor(
           WireMock.get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
             .willReturn(
@@ -246,10 +272,45 @@ class UserManagementConnectorSpec
             )
         )
 
-        val res = userManagementConnector.getMembersForTeam("PlatOps").failed.futureValue
+        val res = userManagementConnector.getTeamWithMembers("PlatOps").failed.futureValue
         res shouldBe a [UpstreamErrorResponse]
+      }
+    }
+
+    "the response contains non-human members" should {
+      "filter out the non-humans" in new Setup {
+        stubFor(
+          WireMock.get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("non-human-members-of-team.json")
+            )
+        )
+
+        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
+
+        res shouldBe Some(Team(
+          members = Seq(Member(username = "joe.bloggs", role = "team_admin"), Member(username = "jane.doe", role = "user")),
+          teamName = "PlatOps",
+          description = None,
+          documentation = None,
+          slack = Some("https://slack.com"),
+          slackNotification = None
+        ))
       }
     }
   }
 
+}
+
+trait Setup {
+  stubFor(
+    WireMock.post(urlEqualTo("/v1/login"))
+      .willReturn(
+        aResponse()
+          .withStatus(200)
+          .withBody(s"""{"Token":"token","uid": "uid"}""")
+      )
+  )
 }
