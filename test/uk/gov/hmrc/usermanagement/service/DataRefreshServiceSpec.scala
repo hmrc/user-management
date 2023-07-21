@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.UserManagementConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamAndRole, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import scala.concurrent.Future
@@ -76,12 +76,12 @@ class DataRefreshServiceSpec
 
       service.updateUsersAndTeams().futureValue
 
-      verify(usersRepository).deleteOldAndInsertNewUsers(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user")))),
-        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team2", role = "team-admin")))),
+      verify(usersRepository).putAll(Seq(
+        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user")))),
+        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))),
       ))
 
-      verify(teamsRepository).deleteOldAndInsertNewTeams(Seq(
+      verify(teamsRepository).putAll(Seq(
         Team(members = Seq(Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq(Member(username = "jane.doe", role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
@@ -123,7 +123,7 @@ class DataRefreshServiceSpec
 
       service.updateUsersAndTeams().futureValue
 
-      verify(usersRepository).deleteOldAndInsertNewUsers(Seq(
+      verify(usersRepository).putAll(Seq(
         User(
           displayName = Some("Joe Bloggs"),
           familyName = "Bloggs",
@@ -133,7 +133,7 @@ class DataRefreshServiceSpec
           username = "joe.bloggs",
           github = None,
           phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user"), TeamAndRole(teamName = "team2", role = "team-admin")))),
+          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user"), TeamMembership(teamName = "team2", role = "team-admin")))),
         User(
           displayName = Some("Jane Doe"),
           familyName = "Doe",
@@ -143,10 +143,10 @@ class DataRefreshServiceSpec
           username = "jane.doe",
           github = None,
           phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "team-admin"), TeamAndRole(teamName = "team2", role = "user")))),
+          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "user")))),
       ))
 
-      verify(teamsRepository).deleteOldAndInsertNewTeams(Seq(
+      verify(teamsRepository).putAll(Seq(
         Team(members = Seq(Member(username = "jane.doe", role = "team-admin"), Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq(Member(username = "jane.doe", role = "user"), Member(username = "joe.bloggs", role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
@@ -162,9 +162,9 @@ trait Setup {
 
   val service = new DataRefreshService(userManagementConnector, usersRepository, teamsRepository)
 
-  when(teamsRepository.deleteOldAndInsertNewTeams(any[Seq[Team]]))
+  when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
 
-  when(usersRepository.deleteOldAndInsertNewUsers(any[Seq[User]]))
+  when(usersRepository.putAll(any[Seq[User]]))
     .thenReturn(Future.successful( () ))
 }

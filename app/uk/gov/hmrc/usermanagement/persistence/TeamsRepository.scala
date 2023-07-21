@@ -45,7 +45,7 @@ class TeamsRepository @Inject()(
 
   private implicit val tc = TransactionConfiguration.strict
 
-  def deleteOldAndInsertNewTeams(teams: Seq[Team]): Future[Unit] =
+  def putAll(teams: Seq[Team]): Future[Unit] =
     withSessionAndTransaction (session =>
       for {
         _  <- collection.deleteMany(session, Filters.empty()).toFuture()
@@ -57,12 +57,6 @@ class TeamsRepository @Inject()(
     collection
       .find()
       .toFuture()
-
-  def findAllTeamNames(): Future[Seq[String]] =
-    collection
-      .find()
-      .toFuture()
-      .map(_.map(_.teamName))
 
   def findByTeamName(teamName: String): Future[Option[Team]] =
     collection

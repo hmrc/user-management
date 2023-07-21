@@ -19,10 +19,10 @@ package uk.gov.hmrc.usermanagement.connectors
 import play.api.{Configuration, Logging}
 import play.api.cache.AsyncCacheApi
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{Json, OFormat, Reads, __}
+import play.api.libs.json.{Json, OWrites, Reads, __}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.{Team, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
@@ -35,20 +35,20 @@ import scala.concurrent.{ExecutionContext, Future}
   tokenCache    : AsyncCacheApi
 )(implicit ec: ExecutionContext) extends Logging {
 
-  val userManagementBaseUrl : String   = config.get[String]("ump.baseUrl")
-  val userManagementLoginUrl: String   = config.get[String]("ump.loginUrl")
-  val tokenTTL              : Duration = config.get[Duration]("ump.auth.tokenTTL")
-  val username              : String   = config.get[String]("ump.auth.username")
-  val password              : String   = config.get[String]("ump.auth.password")
+  private val userManagementBaseUrl : String   = config.get[String]("ump.baseUrl")
+  private val userManagementLoginUrl: String   = config.get[String]("ump.loginUrl")
+  private val tokenTTL              : Duration = config.get[Duration]("ump.auth.tokenTTL")
+  private val username              : String   = config.get[String]("ump.auth.username")
+  private val password              : String   = config.get[String]("ump.auth.password")
 
   import UserManagementConnector._
 
-  def retrieveToken(): Future[UmpToken] =
-      tokenCache.getOrElseUpdate[UmpToken]("token", tokenTTL)(login())
+  private def getToken(): Future[UmpAuthToken] =
+      tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
 
-  def login(): Future[UmpAuthToken] = {
-    implicit val lrf: OFormat[UmpLoginRequest] = UmpLoginRequest.format
-    implicit val atf: OFormat[UmpAuthToken]    = UmpAuthToken.format
+  private def retrieveToken(): Future[UmpAuthToken] = {
+    implicit val lrw: OWrites[UmpLoginRequest] = UmpLoginRequest.writes
+    implicit val atr: Reads[UmpAuthToken]      = UmpAuthToken.reads
     implicit val hc: HeaderCarrier             = HeaderCarrier()
     for {
       token <- httpClientV2.post(url"$userManagementLoginUrl")
@@ -59,15 +59,17 @@ import scala.concurrent.{ExecutionContext, Future}
   }
 
   def getAllUsers()(implicit hc: HeaderCarrier): Future[Seq[User]] = {
-    val url = url"$userManagementBaseUrl/v2/organisations/users"
+    implicit val ur = {
+      implicit val uf = User.format
+      Reads.at[Seq[User]](__ \ "users")
+    }
 
     for {
-      token <- retrieveToken()
+      token <- getToken()
       resp  <- httpClientV2
-        .get(url)
+        .get(url"$userManagementBaseUrl/v2/organisations/users")
         .setHeader(token.asHeaders():_*)
-        .execute[UmpUsers]
-        .map(_.users)
+        .execute[Seq[User]]
     } yield resp
       .filterNot { user =>
         nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
@@ -75,26 +77,26 @@ import scala.concurrent.{ExecutionContext, Future}
   }
 
   def getAllTeams()(implicit hc: HeaderCarrier): Future[Seq[Team]] = {
-    val url = url"$userManagementBaseUrl/v2/organisations/teams"
+    implicit val tr = {
+      implicit val tr = umpTeamReads
+      Reads.at[Seq[Team]](__ \ "teams")
+    }
 
     for {
-      token <- retrieveToken()
+      token <- getToken()
       resp  <- httpClientV2
-        .get(url)
+        .get(url"$userManagementBaseUrl/v2/organisations/teams")
         .setHeader(token.asHeaders():_*)
-        .execute[UmpTeams]
-        .map(_.teams)
+        .execute[Seq[Team]]
     } yield resp
   }
 
   def getTeamWithMembers(teamName: String)(implicit hc: HeaderCarrier): Future[Option[Team]] = {
-    val url = url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members"
-    implicit val uf = Team.umpReads
-
+    implicit val tr = umpTeamReads
     for {
-      token <- retrieveToken()
-      resp <- httpClientV2
-        .get(url)
+      token <- getToken()
+      resp  <- httpClientV2
+        .get(url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members")
         .setHeader(token.asHeaders():_*)
         .execute[Option[Team]]
         .recover {
@@ -119,52 +121,37 @@ object UserManagementConnector {
 
   val nonHumanIdentifiers: Seq[String] = Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
 
-  implicit val uf = User.format
-  implicit val tf = Team.umpReads
-
-  sealed trait UmpToken {
-    def asHeaders(): Seq[(String, String)]
-  }
-
-  case class UmpAuthToken(token: String, uid: String) extends UmpToken {
+  case class UmpAuthToken(token: String, uid: String) {
     def asHeaders(): Seq[(String, String)] = {
       Seq( "Token" -> token, "requester" -> uid)
     }
   }
 
-  case object NoTokenRequired extends UmpToken {
-    override def asHeaders(): Seq[(String, String)] = Seq.empty
-  }
-
   object UmpAuthToken {
-    val format: OFormat[UmpAuthToken] = (
-      (__ \ "Token").format[String]
-        ~ (__ \ "uid").format[String]
-      )(UmpAuthToken.apply, unlift(UmpAuthToken.unapply))
+    val reads: Reads[UmpAuthToken] = (
+      (__ \ "Token").read[String]
+        ~ (__ \ "uid").read[String]
+      )(UmpAuthToken.apply _)
   }
 
   case class UmpLoginRequest(username: String, password:String)
 
   object UmpLoginRequest {
-    val format: OFormat[UmpLoginRequest] =
-      ( (__ \ "username").format[String]
-        ~ (__ \ "password").format[String]
-        )(UmpLoginRequest.apply, unlift(UmpLoginRequest.unapply))
+    val writes: OWrites[UmpLoginRequest] =
+      ( (__ \ "username").write[String]
+        ~ (__ \ "password").write[String]
+        )(unlift(UmpLoginRequest.unapply))
   }
 
-  case class UmpUsers(
-    users: Seq[User]
-  )
-
-  object UmpUsers {
-    implicit val reads: Reads[UmpUsers] = Json.reads[UmpUsers]
+  val umpTeamReads: Reads[Team] = {
+    implicit val tmf = Member.format
+    ((__ \ "members"            ).read[Seq[Member]]
+      ~ (__ \"team"             ).read[String]
+      ~ (__ \"description"      ).readNullable[String]
+      ~ (__ \"documentation"    ).readNullable[String]
+      ~ (__ \"slack"            ).readNullable[String]
+      ~ (__ \"slackNotification").readNullable[String]
+      )(Team.apply _)
   }
 
-  case class UmpTeams(
-    teams: Seq[Team]
-  )
-
-  object UmpTeams {
-    implicit val reads: Reads[UmpTeams] = Json.reads[UmpTeams]
-  }
 }

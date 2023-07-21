@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.persistence
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
-import uk.gov.hmrc.usermanagement.model.{TeamAndRole, User}
+import uk.gov.hmrc.usermanagement.model.{TeamMembership, User}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -31,7 +31,7 @@ class UserRepositorySpec
 
   override lazy val repository = new UsersRepository(mongoComponent)
 
-  "UsersRepository.deleteOldAndInsertNewUsers" should {
+  "UsersRepository.putAll" should {
     "delete the existing users, and insert new users into the collection" in {
       repository.collection.insertOne(
         User(
@@ -43,7 +43,7 @@ class UserRepositorySpec
           username = "old-user",
           github = None,
           phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team1", role = "user"))),
+          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user"))),
       )).toFuture().futureValue
 
       val latestUsers = Seq(
@@ -56,7 +56,7 @@ class UserRepositorySpec
           username = "joe.bloggs",
           github = None,
           phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamAndRole(teamName = "team2", role = "team-admin")))),
+          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))),
         User(
           displayName = Some("Jane Doe"),
           familyName = "Doe",
@@ -69,7 +69,7 @@ class UserRepositorySpec
           teamsAndRoles = None),
       )
 
-      repository.deleteOldAndInsertNewUsers(latestUsers).futureValue
+      repository.putAll(latestUsers).futureValue
 
       val res = repository.findAll().futureValue
       res.length shouldBe 2

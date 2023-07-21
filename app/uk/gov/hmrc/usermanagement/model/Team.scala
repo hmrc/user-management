@@ -17,7 +17,7 @@
 package uk.gov.hmrc.usermanagement.model
 
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{OFormat, Reads, __}
+import play.api.libs.json.{OFormat, __}
 
 case class Team(
  members          : Seq[Member],
@@ -29,19 +29,9 @@ case class Team(
 )
 
 object Team {
-  implicit val tmf = Member.format
-
-  val umpReads: Reads[Team] = {
-    ((__ \ "members"            ).read[Seq[Member]]
-      ~ (__ \"team"             ).read[String]
-      ~ (__ \"description"      ).readNullable[String]
-      ~ (__ \"documentation"    ).readNullable[String]
-      ~ (__ \"slack"            ).readNullable[String]
-      ~ (__ \"slackNotification").readNullable[String]
-      )(Team.apply _)
-  }
 
   val format: OFormat[Team] = {
+    implicit val tmf = Member.format
     ((__ \ "members"            ).format[Seq[Member]]
       ~ (__ \"teamName"         ).format[String]
       ~ (__ \"description"      ).formatNullable[String]

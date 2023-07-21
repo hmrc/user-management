@@ -31,7 +31,7 @@ class TeamRepositorySpec
 
   override lazy val repository = new TeamsRepository(mongoComponent)
 
-  "TeamsRepository.deleteOldAndInsertNewTeams" should {
+  "TeamsRepository.putAll" should {
     "delete the existing teams, and insert new teams into the collection" in {
       repository.collection.insertMany(Seq(
           Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
@@ -43,7 +43,7 @@ class TeamRepositorySpec
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None),
       )
 
-      repository.deleteOldAndInsertNewTeams(latestTeams).futureValue
+      repository.putAll(latestTeams).futureValue
 
       val res = repository.findAll().futureValue
       res.length shouldBe 2

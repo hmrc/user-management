@@ -18,18 +18,22 @@ package uk.gov.hmrc.usermanagement.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, stubFor, urlEqualTo}
+import org.mockito.scalatest.MockitoSugar
 import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import org.scalatest.matchers.should
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
-import uk.gov.hmrc.usermanagement.test.UnitSpec
 
 class UserManagementConnectorSpec
-  extends UnitSpec
+  extends AnyWordSpecLike
+    with should.Matchers
+    with MockitoSugar
     with ScalaFutures
     with WireMockSupport
     with IntegrationPatience

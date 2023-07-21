@@ -34,12 +34,12 @@ class UserManagementController @Inject()(
 )(implicit ec: ExecutionContext
 ) extends BackendController(cc) with Logging
 {
-  def getAllUsers: Action[AnyContent] = Action.async {
+  val getAllUsers: Action[AnyContent] = Action.async {
       implicit val uf = User.format
       usersRepository.findAll().map(res => Ok(Json.toJson(res.sortBy(_.username))))
   }
 
-  def getAllTeams: Action[AnyContent] = Action.async {
+  val getAllTeams: Action[AnyContent] = Action.async {
       implicit val uf = Team.format
       teamsRepository.findAll().map(res => Ok(Json.toJson(res.sortBy(_.teamName))))
   }

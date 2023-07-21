@@ -46,7 +46,7 @@ class UsersRepository @Inject()(
 
   private implicit val tc = TransactionConfiguration.strict
 
-  def deleteOldAndInsertNewUsers(users: Seq[User]): Future[Unit] =
+  def putAll(users: Seq[User]): Future[Unit] =
     withSessionAndTransaction (session =>
       for {
         _  <- collection.deleteMany(session, Filters.empty()).toFuture()
@@ -58,12 +58,6 @@ class UsersRepository @Inject()(
     collection
       .find()
       .toFuture()
-
-  def findAllUsernames(): Future[Seq[String]] =
-    collection
-      .find()
-      .toFuture()
-      .map(_.map(_.username))
 
   def findByUsername(username: String): Future[Option[User]] =
     collection

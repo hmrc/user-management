@@ -20,7 +20,7 @@ import cats.implicits.toFoldableOps
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.UserManagementConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamAndRole, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -39,12 +39,12 @@ class DataRefreshService @Inject()(
       umpTeamNames            <- userManagementConnector.getAllTeams().map(_.map(_.teamName))
       _                       =  logger.info("Successfully retrieved the latest users and teams data from UMP")
       teamsWithMembers        <- getTeamsWithMembers(umpTeamNames)
-      usersWithTeamsAndRoles  =  addTeamAndRolesToUsers(umpUsers, teamsWithMembers)
-      _                       =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithTeamsAndRoles.length} " +
+      usersWithMemberships    =  addMembershipsToUsers(umpUsers, teamsWithMembers)
+      _                       =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
                                   s"human users into their respective repositories")
-      _                       <- usersRepository.deleteOldAndInsertNewUsers(usersWithTeamsAndRoles)
+      _                       <- usersRepository.putAll(usersWithMemberships)
       _                       =  logger.info("Successfully refreshed users data from UMP.")
-      _                       <- teamsRepository.deleteOldAndInsertNewTeams(teamsWithMembers)
+      _                       <- teamsRepository.putAll(teamsWithMembers)
       _                       =  logger.info("Successfully refreshed teams data from UMP.")
     } yield ()
   }
@@ -58,12 +58,12 @@ class DataRefreshService @Inject()(
         )
     }
 
-  private def addTeamAndRolesToUsers(users: Seq[User], teams: Seq[Team]): Seq[User] = {
+  private def addMembershipsToUsers(users: Seq[User], teams: Seq[Team]): Seq[User] = {
     val teamAndMembers: Seq[(String, Member)] = teams.flatMap(team => team.members.map(member => team.teamName -> member))
     users.map{
       user =>
         val membershipsForUser    = teamAndMembers.filter(_._2.username == user.username)
-        val teamsAndRolesForUser  = membershipsForUser.map{ case (team, membership) => TeamAndRole(team, membership.role)}.sortBy(_.teamName)
+        val teamsAndRolesForUser  = membershipsForUser.map{ case (team, membership) => TeamMembership(team, membership.role)}.sortBy(_.teamName)
         user.copy(teamsAndRoles   = Some(teamsAndRolesForUser))
     }
   }
