@@ -209,7 +209,7 @@ class UserManagementConnectorSpec
         val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
 
         res shouldBe Some(Team(
-          members = Seq(Member(username = "joe.bloggs", role = "team_admin"), Member(username = "jane.doe", role = "user")),
+          members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"), Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "user")),
           teamName = "PlatOps",
           description = None,
           documentation = None,
@@ -295,7 +295,7 @@ class UserManagementConnectorSpec
         val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
 
         res shouldBe Some(Team(
-          members = Seq(Member(username = "joe.bloggs", role = "team_admin"), Member(username = "jane.doe", role = "user")),
+          members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"), Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "user")),
           teamName = "PlatOps",
           description = None,
           documentation = None,

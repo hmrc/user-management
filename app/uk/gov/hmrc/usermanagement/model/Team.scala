@@ -32,28 +32,28 @@ object Team {
 
   val format: OFormat[Team] = {
     implicit val tmf = Member.format
-    ((__ \ "members"            ).format[Seq[Member]]
-      ~ (__ \"teamName"         ).format[String]
-      ~ (__ \"description"      ).formatNullable[String]
-      ~ (__ \"documentation"    ).formatNullable[String]
-      ~ (__ \"slack"            ).formatNullable[String]
-      ~ (__ \"slackNotification").formatNullable[String]
-      )(Team.apply, unlift(Team.unapply))
+    ( (__ \ "members"         ).format[Seq[Member]]
+    ~ (__ \"teamName"         ).format[String]
+    ~ (__ \"description"      ).formatNullable[String]
+    ~ (__ \"documentation"    ).formatNullable[String]
+    ~ (__ \"slack"            ).formatNullable[String]
+    ~ (__ \"slackNotification").formatNullable[String]
+    )(Team.apply, unlift(Team.unapply))
   }
 
 }
 
 case class Member(
- username: String,
- role    : String
+  username   : String,
+  displayName: Option[String],
+  role       : String
 )
 
 object Member {
   val format: OFormat[Member] = {
-    ((__ \ "username").format[String]
-      ~ (__ \"role"  ).format[String]
-      )(Member.apply, unlift(Member.unapply))
+    ( (__ \ "username"   ).format[String]
+    ~ (__ \ "displayName").formatNullable[String]
+    ~ (__ \ "role"       ).format[String]
+    )(Member.apply, unlift(Member.unapply))
   }
 }
-
-case class TeamName(asString: String) extends AnyVal

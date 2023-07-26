@@ -39,7 +39,7 @@ class TeamRepositorySpec
       )).toFuture().futureValue
 
       val latestTeams = Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None),
       )
 
