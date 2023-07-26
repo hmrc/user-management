@@ -35,6 +35,8 @@ import scala.concurrent.{ExecutionContext, Future}
   tokenCache    : AsyncCacheApi
 )(implicit ec: ExecutionContext) extends Logging {
 
+  import uk.gov.hmrc.http.HttpReads.Implicits._
+
   private val userManagementBaseUrl : String   = config.get[String]("ump.baseUrl")
   private val userManagementLoginUrl: String   = config.get[String]("ump.loginUrl")
   private val tokenTTL              : Duration = config.get[Duration]("ump.auth.tokenTTL")
