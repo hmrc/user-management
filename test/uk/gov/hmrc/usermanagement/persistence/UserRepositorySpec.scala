@@ -31,6 +31,10 @@ class UserRepositorySpec
 
   override lazy val repository = new UsersRepository(mongoComponent)
 
+  override protected val checkIndexedQueries: Boolean =
+  // we run unindexed queries
+    false
+
   "UsersRepository.putAll" should {
     "delete the existing users, and insert new users into the collection" in {
       repository.collection.insertOne(
@@ -166,7 +170,5 @@ class UserRepositorySpec
 
       repository.findByUsername("jane.doe").futureValue shouldBe None
     }
-
   }
-
 }

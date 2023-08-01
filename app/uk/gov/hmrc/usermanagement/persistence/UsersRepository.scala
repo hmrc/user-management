@@ -37,7 +37,6 @@ class UsersRepository @Inject()(
   domainFormat   = User.format,
   indexes        = Seq(
     IndexModel(Indexes.ascending("username"),IndexOptions().unique(true).background(true)),
-    IndexModel(Indexes.ascending("teamsAndRoles.teamName"), IndexOptions().name("teamsAndRoles.teamName").background(true)),
   )
 ) with Transactions {
 
