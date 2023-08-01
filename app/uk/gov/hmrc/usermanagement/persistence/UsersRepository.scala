@@ -37,6 +37,7 @@ class UsersRepository @Inject()(
   domainFormat   = User.format,
   indexes        = Seq(
     IndexModel(Indexes.ascending("username"),IndexOptions().unique(true).background(true)),
+    IndexModel(Indexes.ascending("teamsAndRoles.teamName"), IndexOptions().name("teamsAndRoles.teamName").background(true)),
   )
 ) with Transactions {
 
@@ -54,10 +55,11 @@ class UsersRepository @Inject()(
       } yield ()
     )
 
-  def findAll(): Future[Seq[User]] =
-    collection
-      .find()
-      .toFuture()
+  def findAll(team: Option[String]): Future[Seq[User]] =
+    team match {
+      case None           => collection.find().toFuture()
+      case Some(teamName) => collection.find(equal("teamsAndRoles.teamName", teamName)).toFuture()
+    }
 
   def findByUsername(username: String): Future[Option[User]] =
     collection
