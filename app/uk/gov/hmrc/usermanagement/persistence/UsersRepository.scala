@@ -54,10 +54,11 @@ class UsersRepository @Inject()(
       } yield ()
     )
 
-  def findAll(): Future[Seq[User]] =
-    collection
-      .find()
-      .toFuture()
+  def findAll(team: Option[String]): Future[Seq[User]] =
+    team match {
+      case None           => collection.find().toFuture()
+      case Some(teamName) => collection.find(equal("teamsAndRoles.teamName", teamName)).toFuture()
+    }
 
   def findByUsername(username: String): Future[Option[User]] =
     collection
