@@ -17,6 +17,7 @@ lazy val microservice = Project("user-management", file("."))
   .settings(integrationTestSettings(): _*)
   .settings(resolvers += Resolver.jcenterRepo)
   .settings(CodeCoverageSettings.settings: _*)
+  .disablePlugins(JUnitXmlReportPlugin)
 
 addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full)
 

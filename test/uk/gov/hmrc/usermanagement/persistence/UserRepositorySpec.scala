@@ -60,7 +60,8 @@ class UserRepositorySpec
           username = "joe.bloggs",
           github = None,
           phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))),
+          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
+        ),
         User(
           displayName = Some("Jane Doe"),
           familyName = "Doe",
@@ -70,7 +71,8 @@ class UserRepositorySpec
           username = "jane.doe",
           github = None,
           phoneNumber = None,
-          teamsAndRoles = None),
+          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team3", role = "user")))
+        )
       )
 
       repository.putAll(latestUsers).futureValue
