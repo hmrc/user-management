@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.Filters.{and, equal, exists, notEqual}
 import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -56,7 +56,8 @@ class UsersRepository @Inject()(
 
   def findAll(team: Option[String]): Future[Seq[User]] =
     team match {
-      case None           => collection.find().toFuture()
+      // currently we are only interested in surfacing users in teams
+      case None           => collection.find(and(exists("teamsAndRoles"), notEqual("teamsAndRoles", Seq.empty))).toFuture()
       case Some(teamName) => collection.find(equal("teamsAndRoles.teamName", teamName)).toFuture()
     }
 
