@@ -52,7 +52,7 @@ class DataRefreshService @Inject()(
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
   private def getTeamsWithMembers(teams: Seq[String])(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Seq[Team]] =
-    teams.foldLeftM[Future,  Seq[Team]](Seq.empty[Team]) { (teamsWithMembers, teamName) =>
+    teams.foldLeftM[Future, Seq[Team]](Seq.empty[Team]) { (teamsWithMembers, teamName) =>
         userManagementConnector.getTeamWithMembers(teamName).map(
           team => team.fold(teamsWithMembers)(team => teamsWithMembers :+ team)
         )
