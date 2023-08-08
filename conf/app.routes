@@ -1,8 +1,8 @@
 # microservice specific routes
 
-GET        /users             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllUsers(team: Option[String] ?= None)
-GET        /user/:user        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserByUsername(user)
+GET        /users              uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllUsers(team: Option[String] ?= None)
+GET        /users/:user        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserByUsername(user)
 
-GET        /teams             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams
-GET        /team/:team        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team)
+GET        /teams              uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams
+GET        /teams/:team        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team)
 
