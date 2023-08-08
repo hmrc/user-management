@@ -30,7 +30,7 @@ import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResp
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 
-class UserManagementConnectorSpec
+class UmpConnectorSpec
   extends AnyWordSpecLike
     with should.Matchers
     with MockitoSugar
@@ -63,8 +63,8 @@ class UserManagementConnectorSpec
         .build()
 
 
-    private val userManagementConnector: UserManagementConnector =
-      app.injector.instanceOf[UserManagementConnector]
+    private val userManagementConnector: UmpConnector =
+      app.injector.instanceOf[UmpConnector]
 
     "getAllUsers" when {
       "parsing a valid response" should {
@@ -81,8 +81,8 @@ class UserManagementConnectorSpec
           val res = userManagementConnector.getAllUsers().futureValue
 
           res should contain theSameElementsAs Seq(
-              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = Some("https://github.com/hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
-              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = None)
+              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
+              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = None)
             )
         }
       }
@@ -133,8 +133,8 @@ class UserManagementConnectorSpec
 
           res.length shouldBe 2
           res should contain theSameElementsAs Seq(
-            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = Some("https://github.com/hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
-            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = None)
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
+            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = None)
           )
         }
       }

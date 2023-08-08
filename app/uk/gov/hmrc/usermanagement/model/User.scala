@@ -20,30 +20,30 @@ import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json.{OFormat, __}
 
 case class User(
-  displayName  : Option[String],
-  familyName   : String,
-  givenName    : Option[String],
-  organisation : Option[String],
-  primaryEmail : String,
-  username     : String,
-  github       : Option[String],
-  phoneNumber  : Option[String],
-  teamsAndRoles: Option[Seq[TeamMembership]]
+  displayName   : Option[String],
+  familyName    : String,
+  givenName     : Option[String],
+  organisation  : Option[String],
+  primaryEmail  : String,
+  username      : String,
+  githubUsername: Option[String],
+  phoneNumber   : Option[String],
+  teamsAndRoles : Option[Seq[TeamMembership]]
 )
 
 object User {
   val format: OFormat[User] = {
     implicit val urf = TeamMembership.format
-    (( __ \ "displayName"    ).formatNullable[String]
-     ~ ( __ \ "familyName"   ).format[String]
-     ~ ( __ \ "givenName"    ).formatNullable[String]
-     ~ ( __ \ "organisation" ).formatNullable[String]
-     ~ ( __ \ "primaryEmail" ).format[String]
-     ~ ( __ \ "username"     ).format[String]
-     ~ ( __ \ "github"       ).formatNullable[String]
-     ~ ( __ \ "phoneNumber"  ).formatNullable[String]
-     ~ ( __ \ "teamsAndRoles").formatNullable[Seq[TeamMembership]]
-    )(User.apply, unlift(User.unapply))
+    ( ( __ \ "displayName"   ).formatNullable[String]
+    ~ ( __ \ "familyName"    ).format[String]
+    ~ ( __ \ "givenName"     ).formatNullable[String]
+    ~ ( __ \ "organisation"  ).formatNullable[String]
+    ~ ( __ \ "primaryEmail"  ).format[String]
+    ~ ( __ \ "username"      ).format[String]
+    ~ ( __ \ "githubUsername").formatNullable[String]
+    ~ ( __ \ "phoneNumber"   ).formatNullable[String]
+    ~ ( __ \ "teamsAndRoles" ).formatNullable[Seq[TeamMembership]]
+     )(User.apply, unlift(User.unapply))
   }
 }
 
@@ -54,8 +54,8 @@ case class TeamMembership(
 
 object TeamMembership {
   val format: OFormat[TeamMembership] = {
-    ((__ \ "teamName").format[String]
-      ~  (__ \ "role").format[String]
+    ( (__ \ "teamName").format[String]
+    ~ (__ \ "role"    ).format[String]
     )(TeamMembership.apply, unlift(TeamMembership.unapply))
   }
 }

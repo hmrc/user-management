@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.service
 import cats.implicits.toFoldableOps
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.usermanagement.connectors.UserManagementConnector
+import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
@@ -28,15 +28,15 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class DataRefreshService @Inject()(
-  userManagementConnector: UserManagementConnector,
+  umpConnector   : UmpConnector,
   usersRepository: UsersRepository,
   teamsRepository: TeamsRepository
 ) extends Logging {
 
   def updateUsersAndTeams()(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Unit] = {
     for {
-      umpUsers                <- userManagementConnector.getAllUsers()
-      umpTeamNames            <- userManagementConnector.getAllTeams().map(_.map(_.teamName))
+      umpUsers                <- umpConnector.getAllUsers()
+      umpTeamNames            <- umpConnector.getAllTeams().map(_.map(_.teamName))
       _                       =  logger.info("Successfully retrieved the latest users and teams data from UMP")
       teamsWithMembers        <- getTeamsWithMembers(umpTeamNames)
       usersWithMemberships    =  addMembershipsToUsers(umpUsers, teamsWithMembers)
@@ -53,7 +53,7 @@ class DataRefreshService @Inject()(
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
   private def getTeamsWithMembers(teams: Seq[String])(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Seq[Team]] =
     teams.foldLeftM[Future, Seq[Team]](Seq.empty[Team]) { (teamsWithMembers, teamName) =>
-        userManagementConnector.getTeamWithMembers(teamName).map(
+        umpConnector.getTeamWithMembers(teamName).map(
           team => team.fold(teamsWithMembers)(team => teamsWithMembers :+ team)
         )
     }

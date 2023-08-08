@@ -36,7 +36,8 @@ class UsersRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = User.format,
   indexes        = Seq(
-    IndexModel(Indexes.ascending("username"),IndexOptions().unique(true).background(true)),
+    IndexModel(Indexes.ascending("username"),      IndexOptions().unique(true).background(true)),
+    IndexModel(Indexes.ascending("githubUsername"),IndexOptions().unique(false).background(true))
   )
 ) with Transactions {
 
@@ -63,7 +64,7 @@ class UsersRepository @Inject()(
       // currently we are only interested in surfacing users in teams
       Some(and(exists("teamsAndRoles"), notEqual("teamsAndRoles", Seq.empty))),
       team.map(teamName => equal("teamsAndRoles.teamName", teamName)),
-      github.map(username => equal("github", username))
+      github.map(username => equal("githubUsername", username))
     ).flatten
 
     collection.find(Filters.and(filters:_*)).toFuture()
