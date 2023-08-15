@@ -22,14 +22,14 @@ import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json.{Json, OWrites, Reads, __}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
- class UserManagementConnector @Inject()(
+ class UmpConnector @Inject()(
   config        : Configuration,
   httpClientV2  : HttpClientV2,
   tokenCache    : AsyncCacheApi
@@ -43,7 +43,7 @@ import scala.concurrent.{ExecutionContext, Future}
   private val username              : String   = config.get[String]("ump.auth.username")
   private val password              : String   = config.get[String]("ump.auth.password")
 
-  import UserManagementConnector._
+  import UmpConnector._
 
   private def getToken(): Future[UmpAuthToken] =
       tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
@@ -62,7 +62,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
   def getAllUsers()(implicit hc: HeaderCarrier): Future[Seq[User]] = {
     implicit val ur = {
-      implicit val uf = User.format
+      implicit val uf = umpUserReads
       Reads.at[Seq[User]](__ \ "users")
     }
 
@@ -119,7 +119,7 @@ import scala.concurrent.{ExecutionContext, Future}
   }
 }
 
-object UserManagementConnector {
+object UmpConnector {
 
   val nonHumanIdentifiers: Seq[String] = Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
 
@@ -130,9 +130,9 @@ object UserManagementConnector {
   }
 
   object UmpAuthToken {
-    val reads: Reads[UmpAuthToken] = (
-      (__ \ "Token").read[String]
-        ~ (__ \ "uid").read[String]
+    val reads: Reads[UmpAuthToken] =
+      ( (__ \ "Token").read[String]
+      ~ (__ \ "uid"  ).read[String]
       )(UmpAuthToken.apply _)
   }
 
@@ -141,19 +141,33 @@ object UserManagementConnector {
   object UmpLoginRequest {
     val writes: OWrites[UmpLoginRequest] =
       ( (__ \ "username").write[String]
-        ~ (__ \ "password").write[String]
-        )(unlift(UmpLoginRequest.unapply))
+      ~ (__ \ "password").write[String]
+      )(unlift(UmpLoginRequest.unapply))
+  }
+
+  val umpUserReads: Reads[User] = {
+    implicit val urf = TeamMembership.format
+    ( ( __ \ "displayName"  ).readNullable[String]
+    ~ ( __ \ "familyName"   ).read[String]
+    ~ ( __ \ "givenName"    ).readNullable[String]
+    ~ ( __ \ "organisation" ).readNullable[String]
+    ~ ( __ \ "primaryEmail" ).read[String]
+    ~ ( __ \ "username"     ).read[String]
+    ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
+    ~ ( __ \ "phoneNumber"  ).readNullable[String]
+    ~ ( __ \ "teamsAndRoles").readNullable[Seq[TeamMembership]]
+    )(User.apply _)
   }
 
   val umpTeamReads: Reads[Team] = {
     implicit val tmf = Member.format
-    ((__ \ "members"            ).read[Seq[Member]]
-      ~ (__ \"team"             ).read[String]
-      ~ (__ \"description"      ).readNullable[String]
-      ~ (__ \"documentation"    ).readNullable[String]
-      ~ (__ \"slack"            ).readNullable[String]
-      ~ (__ \"slackNotification").readNullable[String]
-      )(Team.apply _)
+    ( (__ \ "members"         ).read[Seq[Member]]
+    ~ (__ \"team"             ).read[String]
+    ~ (__ \"description"      ).readNullable[String]
+    ~ (__ \"documentation"    ).readNullable[String]
+    ~ (__ \"slack"            ).readNullable[String]
+    ~ (__ \"slackNotification").readNullable[String]
+    )(Team.apply _)
   }
 
 }

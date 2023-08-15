@@ -39,45 +39,45 @@ class UserRepositorySpec
     "delete the existing users, and insert new users into the collection" in {
       repository.collection.insertOne(
         User(
-          displayName = Some("Old User"),
-          familyName = "Old",
-          givenName = Some("User"),
-          organisation = Some("MDTP"),
-          primaryEmail = "old-user@gmail.com",
-          username = "old-user",
-          github = None,
-          phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user"))),
+          displayName    = Some("Old User"),
+          familyName     = "Old",
+          givenName      = Some("User"),
+          organisation   = Some("MDTP"),
+          primaryEmail   = "old-user@gmail.com",
+          username       = "old-user",
+          githubUsername = None,
+          phoneNumber    = None,
+          teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team1", role = "user"))),
       )).toFuture().futureValue
 
       val latestUsers = Seq(
         User(
-          displayName = Some("Joe Bloggs"),
-          familyName = "Bloggs",
-          givenName = Some("Joe"),
-          organisation = Some("MDTP"),
-          primaryEmail = "joe.bloggs@gmail.com",
-          username = "joe.bloggs",
-          github = None,
-          phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
+          displayName    = Some("Joe Bloggs"),
+          familyName     = "Bloggs",
+          givenName      = Some("Joe"),
+          organisation   = Some("MDTP"),
+          primaryEmail   = "joe.bloggs@gmail.com",
+          username       = "joe.bloggs",
+          githubUsername = None,
+          phoneNumber    = None,
+          teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
         ),
         User(
-          displayName = Some("Jane Doe"),
-          familyName = "Doe",
-          givenName = Some("Jane"),
-          organisation = Some("MDTP"),
-          primaryEmail = "jane.doe@gmail.com",
-          username = "jane.doe",
-          github = None,
-          phoneNumber = None,
-          teamsAndRoles = Some(Seq(TeamMembership(teamName = "team3", role = "user")))
+          displayName    = Some("Jane Doe"),
+          familyName     = "Doe",
+          givenName      = Some("Jane"),
+          organisation   = Some("MDTP"),
+          primaryEmail   = "jane.doe@gmail.com",
+          username       = "jane.doe",
+          githubUsername = None,
+          phoneNumber    = None,
+          teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team3", role = "user")))
         )
       )
 
       repository.putAll(latestUsers).futureValue
 
-      val res = repository.findAll(None).futureValue
+      val res = repository.find().futureValue
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
@@ -85,80 +85,163 @@ class UserRepositorySpec
 
   }
 
-  "UsersRepository.findAll()" should {
-    "find all users that are a member of given team name" in {
-
+  "UsersRepository.find" should {
+    "only find users in teams" in {
       val userOne = User(
-        displayName   = Some("Joe Bloggs"),
-        familyName    = "Bloggs",
-        givenName     = Some("Joe"),
-        organisation  = Some("MDTP"),
-        primaryEmail  = "joe.bloggs@gmail.com",
-        username      = "joe.bloggs",
-        github        = None,
-        phoneNumber   = None,
-        teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "team-admin")))
+        displayName    = Some("Joe Bloggs"),
+        familyName     = "Bloggs",
+        givenName      = Some("Joe"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "joe.bloggs@gmail.com",
+        username       = "joe.bloggs",
+        githubUsername = None,
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "team-admin")))
       )
 
       val userTwo = User(
-        displayName   = Some("John Smith"),
-        familyName    = "Smith",
-        givenName     = Some("John"),
-        organisation  = Some("MDTP"),
-        primaryEmail  = "john.smith@gmail.com",
-        username      = "john.smith",
-        github        = None,
-        phoneNumber   = None,
-        teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
+        displayName    = Some("John Smith"),
+        familyName     = "Smith",
+        givenName      = Some("John"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "john.smith@gmail.com",
+        username       = "john.smith",
+        githubUsername = None,
+        phoneNumber    = None,
+        teamsAndRoles  = None
       )
 
-      val userThree   = User(
-        displayName   = Some("Jane Doe"),
-        familyName    = "Doe",
-        givenName     = Some("Jane"),
-        organisation  = Some("MDTP"),
-        primaryEmail  = "jane.doe@gmail.com",
-        username      = "jane.doe",
-        github        = None,
-        phoneNumber   = None,
-        teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin")))
+      val userThree = User(
+        displayName    = Some("Jane Doe"),
+        familyName     = "Doe",
+        givenName      = Some("Jane"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "jane.doe@gmail.com",
+        username       = "jane.doe",
+        githubUsername = None,
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq.empty)
       )
 
       val users = Seq(userOne, userTwo, userThree)
 
       repository.collection.insertMany(users).toFuture().futureValue
 
-      val res = repository.findAll(Some("team1")).futureValue
+      val res = repository.find().futureValue
+
+      res.length shouldBe 1
+      res should contain theSameElementsAs Seq(userOne)
+    }
+
+
+    "find all users that are a member of given team name" in {
+
+      val userOne = User(
+        displayName    = Some("Joe Bloggs"),
+        familyName     = "Bloggs",
+        givenName      = Some("Joe"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "joe.bloggs@gmail.com",
+        username       = "joe.bloggs",
+        githubUsername = None,
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "team-admin")))
+      )
+
+      val userTwo = User(
+        displayName    = Some("John Smith"),
+        familyName     = "Smith",
+        givenName      = Some("John"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "john.smith@gmail.com",
+        username       = "john.smith",
+        githubUsername = None,
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
+      )
+
+      val userThree = User(
+        displayName    = Some("Jane Doe"),
+        familyName     = "Doe",
+        givenName      = Some("Jane"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "jane.doe@gmail.com",
+        username       = "jane.doe",
+        githubUsername = None,
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin")))
+      )
+
+      val users = Seq(userOne, userTwo, userThree)
+
+      repository.collection.insertMany(users).toFuture().futureValue
+
+      val res = repository.find(Some("team1")).futureValue
 
       res.length shouldBe 2
       res should contain theSameElementsAs Seq(userOne, userThree)
+    }
+
+    "find a user by github username" in {
+      val userOne = User(
+        displayName    = Some("Joe Bloggs"),
+        familyName     = "Bloggs",
+        givenName      = Some("Joe"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "joe.bloggs@gmail.com",
+        username       = "joe.bloggs",
+        githubUsername = Some("joe-github"),
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "team-admin")))
+      )
+
+      val userTwo = User(
+        displayName    = Some("John Smith"),
+        familyName     = "Smith",
+        givenName      = Some("John"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "john.smith@gmail.com",
+        username       = "john.smith",
+        githubUsername = Some("john-github"),
+        phoneNumber    = None,
+        teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
+      )
+
+      val users = Seq(userOne, userOne.copy(username = "joe.bloggs1"), userTwo)
+
+      repository.collection.insertMany(users).toFuture().futureValue
+
+      val res = repository.find(github = Some("joe-github")).futureValue
+
+      res.length shouldBe 2
+      res should contain theSameElementsAs Seq(userOne, userOne.copy(username = "joe.bloggs1"))
     }
   }
 
   "UsersRepository.findByUsername" should {
 
     val userOne = User(
-      displayName   = Some("Joe Bloggs"),
-      familyName    = "Bloggs",
-      givenName     = Some("Joe"),
-      organisation  = Some("MDTP"),
-      primaryEmail  = "joe.bloggs@gmail.com",
-      username      = "joe.bloggs",
-      github        = None,
-      phoneNumber   = None,
-      teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "team-admin")))
+      displayName    = Some("Joe Bloggs"),
+      familyName     = "Bloggs",
+      givenName      = Some("Joe"),
+      organisation   = Some("MDTP"),
+      primaryEmail   = "joe.bloggs@gmail.com",
+      username       = "joe.bloggs",
+      githubUsername = None,
+      phoneNumber    = None,
+      teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "team-admin")))
     )
 
     val userTwo = User(
-      displayName   = Some("John Smith"),
-      familyName    = "Smith",
-      givenName     = Some("John"),
-      organisation  = Some("MDTP"),
-      primaryEmail  = "john.smith@gmail.com",
-      username      = "john.smith",
-      github        = None,
-      phoneNumber   = None,
-      teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
+      displayName    = Some("John Smith"),
+      familyName     = "Smith",
+      givenName      = Some("John"),
+      organisation   = Some("MDTP"),
+      primaryEmail   = "john.smith@gmail.com",
+      username       = "john.smith",
+      githubUsername = None,
+      phoneNumber    = None,
+      teamsAndRoles  = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))
     )
 
     "return user information for a given username" in {

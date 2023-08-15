@@ -23,7 +23,7 @@ import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.usermanagement.connectors.UserManagementConnector
+import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
@@ -42,34 +42,34 @@ class DataRefreshServiceSpec
 
   "updateUsersAndTeams" should {
     "update the Users and Teams repositories based on the data received from UMP" in new Setup {
-      when(userManagementConnector.getAllUsers())
+      when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = None),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, teamsAndRoles = None),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = None),
         )))
 
-      when(userManagementConnector.getAllTeams())
+      when(umpConnector.getAllTeams())
         .thenReturn(Future.successful(Seq(
           Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
           Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
           Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
         )))
 
-      when(userManagementConnector.getTeamWithMembers("team1"))
+      when(umpConnector.getTeamWithMembers("team1"))
         .thenReturn(Future.successful(Some(
           Team(
             members = Seq(Member("joe.bloggs", Some("Joe Bloggs"), "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
-      when(userManagementConnector.getTeamWithMembers("team2"))
+      when(umpConnector.getTeamWithMembers("team2"))
         .thenReturn(Future.successful(Some(
           Team(
             members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
-      when(userManagementConnector.getTeamWithMembers("team3"))
+      when(umpConnector.getTeamWithMembers("team3"))
         .thenReturn(Future.successful(Some(Team(
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
@@ -77,8 +77,8 @@ class DataRefreshServiceSpec
       service.updateUsersAndTeams().futureValue
 
       verify(usersRepository).putAll(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user")))),
-        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))),
+        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user")))),
+        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = Some(Seq(TeamMembership(teamName = "team2", role = "team-admin")))),
       ))
 
       verify(teamsRepository).putAll(Seq(
@@ -89,34 +89,34 @@ class DataRefreshServiceSpec
     }
 
     "Handle users existing in more than one team" in new Setup {
-      when(userManagementConnector.getAllUsers())
+      when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", github = None, phoneNumber = None, teamsAndRoles = None),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", github = None, phoneNumber = None, teamsAndRoles = None),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, teamsAndRoles = None),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = None),
         )))
 
-      when(userManagementConnector.getAllTeams())
+      when(umpConnector.getAllTeams())
         .thenReturn(Future.successful(Seq(
           Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
           Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
           Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
         )))
 
-      when(userManagementConnector.getTeamWithMembers("team1"))
+      when(umpConnector.getTeamWithMembers("team1"))
         .thenReturn(Future.successful(Some(
           Team(
             members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin"), Member("joe.bloggs", Some("Joe Bloggs"), "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
-      when(userManagementConnector.getTeamWithMembers("team2"))
+      when(umpConnector.getTeamWithMembers("team2"))
         .thenReturn(Future.successful(Some(
           Team(
             members = Seq(Member("jane.doe", Some("Jane Doe"), "user"), Member("joe.bloggs", Some("Joe Bloggs"), "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
-      when(userManagementConnector.getTeamWithMembers("team3"))
+      when(umpConnector.getTeamWithMembers("team3"))
         .thenReturn(Future.successful(Some(Team(
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
@@ -131,7 +131,7 @@ class DataRefreshServiceSpec
           organisation = Some("MDTP"),
           primaryEmail = "joe.bloggs@gmail.com",
           username = "joe.bloggs",
-          github = None,
+          githubUsername = None,
           phoneNumber = None,
           teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "user"), TeamMembership(teamName = "team2", role = "team-admin")))),
         User(
@@ -141,7 +141,7 @@ class DataRefreshServiceSpec
           organisation = Some("MDTP"),
           primaryEmail = "jane.doe@gmail.com",
           username = "jane.doe",
-          github = None,
+          githubUsername = None,
           phoneNumber = None,
           teamsAndRoles = Some(Seq(TeamMembership(teamName = "team1", role = "team-admin"), TeamMembership(teamName = "team2", role = "user")))),
       ))
@@ -156,11 +156,11 @@ class DataRefreshServiceSpec
 }
 
 trait Setup {
-  val userManagementConnector = mock[UserManagementConnector]
-  val usersRepository         = mock[UsersRepository]
-  val teamsRepository         = mock[TeamsRepository]
+  val umpConnector    = mock[UmpConnector]
+  val usersRepository = mock[UsersRepository]
+  val teamsRepository = mock[TeamsRepository]
 
-  val service = new DataRefreshService(userManagementConnector, usersRepository, teamsRepository)
+  val service = new DataRefreshService(umpConnector, usersRepository, teamsRepository)
 
   when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))

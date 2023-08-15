@@ -36,7 +36,8 @@ class UsersRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = User.format,
   indexes        = Seq(
-    IndexModel(Indexes.ascending("username"),IndexOptions().unique(true).background(true)),
+    IndexModel(Indexes.ascending("username"),      IndexOptions().unique(true).background(true)),
+    IndexModel(Indexes.ascending("githubUsername"),IndexOptions().unique(false).background(true))
   )
 ) with Transactions {
 
@@ -54,12 +55,20 @@ class UsersRepository @Inject()(
       } yield ()
     )
 
-  def findAll(team: Option[String]): Future[Seq[User]] =
-    team match {
+  def find(
+    team  : Option[String] = None,
+    github: Option[String] = None
+  ): Future[Seq[User]] = {
+
+    val filters = Seq(
       // currently we are only interested in surfacing users in teams
-      case None           => collection.find(and(exists("teamsAndRoles"), notEqual("teamsAndRoles", Seq.empty))).toFuture()
-      case Some(teamName) => collection.find(equal("teamsAndRoles.teamName", teamName)).toFuture()
-    }
+      Some(and(exists("teamsAndRoles"), notEqual("teamsAndRoles", Seq.empty))),
+      team.map(teamName => equal("teamsAndRoles.teamName", teamName)),
+      github.map(username => equal("githubUsername", username))
+    ).flatten
+
+    collection.find(Filters.and(filters:_*)).toFuture()
+  }
 
   def findByUsername(username: String): Future[Option[User]] =
     collection
