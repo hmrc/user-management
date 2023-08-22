@@ -46,7 +46,7 @@ import scala.concurrent.{ExecutionContext, Future}
   import UmpConnector._
 
   private def getToken(): Future[UmpAuthToken] =
-      tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
+    tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
 
   private def retrieveToken(): Future[UmpAuthToken] = {
     implicit val lrw: OWrites[UmpLoginRequest] = UmpLoginRequest.writes
@@ -155,19 +155,18 @@ object UmpConnector {
     ~ ( __ \ "username"     ).read[String]
     ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
-    ~ ( __ \ "teamsAndRoles").readNullable[Seq[TeamMembership]]
+    ~ ( __ \ "teamsAndRoles").readWithDefault[Seq[TeamMembership]](Seq.empty[TeamMembership])
     )(User.apply _)
   }
 
   val umpTeamReads: Reads[Team] = {
     implicit val tmf = Member.format
-    ( (__ \ "members"         ).read[Seq[Member]]
-    ~ (__ \"team"             ).read[String]
-    ~ (__ \"description"      ).readNullable[String]
-    ~ (__ \"documentation"    ).readNullable[String]
-    ~ (__ \"slack"            ).readNullable[String]
-    ~ (__ \"slackNotification").readNullable[String]
+    ( (__ \ "members"          ).read[Seq[Member]]
+    ~ (__ \ "team"             ).read[String]
+    ~ (__ \ "description"      ).readNullable[String]
+    ~ (__ \ "documentation"    ).readNullable[String]
+    ~ (__ \ "slack"            ).readNullable[String]
+    ~ (__ \ "slackNotification").readNullable[String]
     )(Team.apply _)
   }
-
 }

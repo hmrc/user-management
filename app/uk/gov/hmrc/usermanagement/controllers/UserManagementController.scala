@@ -28,31 +28,31 @@ import scala.concurrent.ExecutionContext
 
 @Singleton
 class UserManagementController @Inject()(
-  cc                        : ControllerComponents,
-  usersRepository           : UsersRepository,
-  teamsRepository           : TeamsRepository
+  cc             : ControllerComponents,
+  usersRepository: UsersRepository,
+  teamsRepository: TeamsRepository
 )(implicit ec: ExecutionContext
 ) extends BackendController(cc) with Logging
 {
   def getUsers(team: Option[String], github: Option[String]): Action[AnyContent] = Action.async {
-      implicit val uf = User.format
-      usersRepository.find(team, github).map(res => Ok(Json.toJson(res.sortBy(_.username))))
+    implicit val uf = User.format
+    usersRepository.find(team, github).map(res => Ok(Json.toJson(res.sortBy(_.username))))
   }
 
   val getAllTeams: Action[AnyContent] = Action.async {
-      implicit val uf = Team.format
-      teamsRepository.findAll().map(res => Ok(Json.toJson(res.sortBy(_.teamName))))
+    implicit val uf = Team.format
+    teamsRepository.findAll().map(res => Ok(Json.toJson(res.sortBy(_.teamName))))
   }
 
   def getUserByUsername(username: String): Action[AnyContent] = Action.async {
-      implicit val uf = User.format
-      usersRepository.findByUsername(username)
-        .map(_.fold(NotFound: Result)(res => Ok(Json.toJson(res))))
+    implicit val uf = User.format
+    usersRepository.findByUsername(username)
+      .map(_.fold(NotFound: Result)(res => Ok(Json.toJson(res))))
   }
 
   def getTeamByTeamName(teamName: String): Action[AnyContent] = Action.async {
-      implicit val uf = Team.format
-      teamsRepository.findByTeamName(teamName)
-        .map(_.fold(NotFound: Result)(res => Ok(Json.toJson(res))))
+    implicit val uf = Team.format
+    teamsRepository.findByTeamName(teamName)
+      .map(_.fold(NotFound: Result)(res => Ok(Json.toJson(res))))
   }
 }
