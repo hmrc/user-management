@@ -28,7 +28,7 @@ import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
-import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 
 class UmpConnectorSpec
   extends AnyWordSpecLike
@@ -81,8 +81,8 @@ class UmpConnectorSpec
           val res = userManagementConnector.getAllUsers().futureValue
 
           res should contain theSameElementsAs Seq(
-              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
-              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = None)
+              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = Seq.empty[TeamMembership]),
+              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq.empty[TeamMembership])
             )
         }
       }
@@ -133,8 +133,8 @@ class UmpConnectorSpec
 
           res.length shouldBe 2
           res should contain theSameElementsAs Seq(
-            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = None),
-            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = None)
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), teamsAndRoles = Seq.empty[TeamMembership]),
+            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq.empty[TeamMembership])
           )
         }
       }

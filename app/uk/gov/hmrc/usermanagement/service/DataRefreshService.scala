@@ -64,8 +64,7 @@ class DataRefreshService @Inject()(
       user =>
         val membershipsForUser    = teamAndMembers.filter(_._2.username == user.username)
         val teamsAndRolesForUser  = membershipsForUser.map{ case (team, membership) => TeamMembership(team, membership.role)}.sortBy(_.teamName)
-        user.copy(teamsAndRoles   = Some(teamsAndRolesForUser))
+        user.copy(teamsAndRoles   = teamsAndRolesForUser)
     }
   }
-
 }
