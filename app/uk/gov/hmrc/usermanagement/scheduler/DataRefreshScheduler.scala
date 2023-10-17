@@ -20,17 +20,16 @@ import akka.actor.ActorSystem
 import play.api.Logging
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.mongo.lock.{LockService, MongoLockRepository}
-import uk.gov.hmrc.usermanagement.config.SchedulerConfigs
+import uk.gov.hmrc.mongo.lock.{MongoLockRepository, TimePeriodLockService}
+import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.service.DataRefreshService
 
 import javax.inject.Inject
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 class DataRefreshScheduler @Inject()(
   dataRefreshService : DataRefreshService,
-  config             : SchedulerConfigs,
+  config             : SchedulerConfig,
   mongoLockRepository: MongoLockRepository,
 )(implicit
   actorSystem         : ActorSystem,
@@ -38,9 +37,9 @@ class DataRefreshScheduler @Inject()(
   ec                  : ExecutionContext
 ) extends SchedulerUtils with Logging {
 
-  private val dataRefreshLock: LockService     = LockService(mongoLockRepository, "user-management-data-refresh-lock", 10.minutes)
+  private val dataRefreshLock: TimePeriodLockService = TimePeriodLockService(mongoLockRepository, "user-management-data-refresh-lock", config.frequency)
 
-  scheduleWithLock("User Management Data Refresh", config.dataRefreshScheduler, dataRefreshLock) {
+  scheduleWithLock("User Management Data Refresh", config, dataRefreshLock) {
     implicit val hc: HeaderCarrier = HeaderCarrier()
     for {
       _ <- Future.successful(logger.info("Beginning user management data refresh"))
@@ -50,7 +49,7 @@ class DataRefreshScheduler @Inject()(
 
   def manualReload()(implicit hc: HeaderCarrier): Future[Unit] = {
     dataRefreshLock
-      .withLock {
+      .withRenewedLock {
         logger.info("Data refresh has been manually triggered")
         dataRefreshService.updateUsersAndTeams()
       }

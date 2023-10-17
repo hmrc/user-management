@@ -16,19 +16,23 @@
 
 package uk.gov.hmrc.usermanagement.service
 
+import akka.actor.ActorSystem
+import com.typesafe.config.ConfigFactory
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar.{mock, when}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 
 class DataRefreshServiceSpec
@@ -39,6 +43,7 @@ class DataRefreshServiceSpec
     with IntegrationPatience {
 
   private implicit val hc: HeaderCarrier = HeaderCarrier()
+  private implicit val as: ActorSystem = ActorSystem("test")
 
   "updateUsersAndTeams" should {
     "update the Users and Teams repositories based on the data received from UMP" in new Setup {
@@ -167,8 +172,9 @@ trait Setup {
   val umpConnector    = mock[UmpConnector]
   val usersRepository = mock[UsersRepository]
   val teamsRepository = mock[TeamsRepository]
+  val schedulerConfig = new SchedulerConfig(Configuration(ConfigFactory.load("application.conf")))
 
-  val service = new DataRefreshService(umpConnector, usersRepository, teamsRepository)
+  val service = new DataRefreshService(umpConnector, usersRepository, teamsRepository, schedulerConfig)
 
   when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
