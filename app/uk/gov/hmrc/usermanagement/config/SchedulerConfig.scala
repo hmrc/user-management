@@ -21,38 +21,13 @@ import play.api.Configuration
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.FiniteDuration
 
-case class SchedulerConfig(
-  enabledKey  : String,
-  enabled     : Boolean,
-  frequency   : FiniteDuration,
-  initialDelay: FiniteDuration,
-)
-
-object SchedulerConfig {
-
-  def apply(
-     configuration: Configuration,
-     enabledKey: String,
-     frequencyKey: String,
-     initialDelayKey: String,
-   ): SchedulerConfig =
-    SchedulerConfig(
-      enabledKey,
-      enabled      = configuration.get[Boolean](enabledKey),
-      frequency    = configuration.get[FiniteDuration](frequencyKey),
-      initialDelay = configuration.get[FiniteDuration](initialDelayKey),
-    )
-}
-
 @Singleton
-class SchedulerConfigs @Inject() (configuration: Configuration) {
+class SchedulerConfig @Inject() (configuration: Configuration) {
 
-  val dataRefreshScheduler: SchedulerConfig = SchedulerConfig(
-    configuration,
-    enabledKey      = "scheduler.dataRefresh.enabled",
-    frequencyKey    = "scheduler.dataRefresh.interval",
-    initialDelayKey = "scheduler.dataRefresh.initialDelay",
-  )
-
+  val enabledKey: String              = "scheduler.dataRefresh.enabled"
+  val enabled: Boolean                = configuration.get[Boolean](enabledKey)
+  val frequency: FiniteDuration       = configuration.get[FiniteDuration]("scheduler.dataRefresh.interval")
+  val initialDelay: FiniteDuration    = configuration.get[FiniteDuration]("scheduler.dataRefresh.initialDelay")
+  val requestThrottle: FiniteDuration = configuration.get[FiniteDuration]("scheduler.dataRefresh.requestThrottle")
 }
 

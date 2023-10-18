@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.scheduler
 import akka.actor.ActorSystem
 import play.api.Logger
 import play.api.inject.ApplicationLifecycle
-import uk.gov.hmrc.mongo.lock.LockService
+import uk.gov.hmrc.mongo.lock.TimePeriodLockService
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -67,7 +67,7 @@ trait SchedulerUtils {
   def scheduleWithLock(
                         label          : String,
                         schedulerConfig: SchedulerConfig,
-                        lock           : LockService
+                        lock           : TimePeriodLockService
                       )(f: => Future[Unit]
                       )(implicit
                         actorSystem         : ActorSystem,
@@ -76,7 +76,7 @@ trait SchedulerUtils {
                       ): Unit =
     schedule(label, schedulerConfig) {
       lock
-        .withLock(f)
+        .withRenewedLock(f)
         .map {
           case Some(_) => logger.debug(s"$label finished - releasing lock")
           case None    => logger.debug(s"$label cannot run - lock ${lock.lockId} is taken... skipping update")

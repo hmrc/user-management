@@ -16,9 +16,11 @@
 
 package uk.gov.hmrc.usermanagement.service
 
-import cats.implicits.toFoldableOps
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Sink, Source}
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
@@ -30,10 +32,11 @@ import scala.concurrent.{ExecutionContext, Future}
 class DataRefreshService @Inject()(
   umpConnector   : UmpConnector,
   usersRepository: UsersRepository,
-  teamsRepository: TeamsRepository
+  teamsRepository: TeamsRepository,
+  config         : SchedulerConfig
 ) extends Logging {
 
-  def updateUsersAndTeams()(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Unit] = {
+  def updateUsersAndTeams()(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] = {
     for {
       umpUsers                <- umpConnector.getAllUsers()
       umpTeamNames            <- umpConnector.getAllTeams().map(_.map(_.teamName))
@@ -51,12 +54,12 @@ class DataRefreshService @Inject()(
 
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
-  private def getTeamsWithMembers(teams: Seq[String])(implicit ec: ExecutionContext, hc: HeaderCarrier): Future[Seq[Team]] =
-    teams.foldLeftM[Future, Seq[Team]](Seq.empty[Team]) { (teamsWithMembers, teamName) =>
-        umpConnector.getTeamWithMembers(teamName).map(
-          team => team.fold(teamsWithMembers)(team => teamsWithMembers :+ team)
-        )
-    }
+  private def getTeamsWithMembers(teams: Seq[String])(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Seq[Team]] =
+    Source(teams)
+      .throttle(1, config.requestThrottle)
+      .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))
+      .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
+      .map(_.flatten)
 
   private def addMembershipsToUsers(users: Seq[User], teams: Seq[Team]): Seq[User] = {
     val teamAndMembers: Seq[(String, Member)] = teams.flatMap(team => team.members.map(member => team.teamName -> member))
