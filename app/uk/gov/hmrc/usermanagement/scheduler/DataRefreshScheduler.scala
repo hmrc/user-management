@@ -20,7 +20,8 @@ import akka.actor.ActorSystem
 import play.api.Logging
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.mongo.lock.{MongoLockRepository, TimePeriodLockService}
+import uk.gov.hmrc.mongo.TimestampSupport
+import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.service.DataRefreshService
 
@@ -31,13 +32,20 @@ class DataRefreshScheduler @Inject()(
   dataRefreshService : DataRefreshService,
   config             : SchedulerConfig,
   mongoLockRepository: MongoLockRepository,
+  timestampSupport   : TimestampSupport
 )(implicit
   actorSystem         : ActorSystem,
   applicationLifecycle: ApplicationLifecycle,
   ec                  : ExecutionContext
 ) extends SchedulerUtils with Logging {
 
-  private val dataRefreshLock: TimePeriodLockService = TimePeriodLockService(mongoLockRepository, "user-management-data-refresh-lock", config.frequency)
+  private val dataRefreshLock: ScheduledLockService =
+    ScheduledLockService(
+      lockRepository    = mongoLockRepository,
+      lockId            = "user-management-data-refresh-lock",
+      timestampSupport  = timestampSupport,
+      schedulerInterval = config.interval
+    )
 
   scheduleWithLock("User Management Data Refresh", config, dataRefreshLock) {
     implicit val hc: HeaderCarrier = HeaderCarrier()
@@ -49,7 +57,7 @@ class DataRefreshScheduler @Inject()(
 
   def manualReload()(implicit hc: HeaderCarrier): Future[Unit] = {
     dataRefreshLock
-      .withRenewedLock {
+      .withLock {
         logger.info("Data refresh has been manually triggered")
         dataRefreshService.updateUsersAndTeams()
       }

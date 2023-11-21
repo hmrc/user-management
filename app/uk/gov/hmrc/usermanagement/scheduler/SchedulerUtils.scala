@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.scheduler
 import akka.actor.ActorSystem
 import play.api.Logger
 import play.api.inject.ApplicationLifecycle
-import uk.gov.hmrc.mongo.lock.TimePeriodLockService
+import uk.gov.hmrc.mongo.lock.ScheduledLockService
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -40,7 +40,7 @@ trait SchedulerUtils {
   ): Unit =
     if (schedulerConfig.enabled) {
       val initialDelay = schedulerConfig.initialDelay
-      val interval     = schedulerConfig.frequency
+      val interval     = schedulerConfig.interval
       logger.info(s"Enabling $label scheduler, running every $interval (after initial delay $initialDelay)")
       val cancellable =
         actorSystem.scheduler.scheduleWithFixedDelay(initialDelay, interval) {
@@ -65,18 +65,18 @@ trait SchedulerUtils {
         s"$label scheduler is DISABLED. to enable, configure configure ${schedulerConfig.enabledKey}=true in config.")
     }
   def scheduleWithLock(
-                        label          : String,
-                        schedulerConfig: SchedulerConfig,
-                        lock           : TimePeriodLockService
-                      )(f: => Future[Unit]
-                      )(implicit
-                        actorSystem         : ActorSystem,
-                        applicationLifecycle: ApplicationLifecycle,
-                        ec                  : ExecutionContext
-                      ): Unit =
+    label          : String,
+    schedulerConfig: SchedulerConfig,
+    lock           : ScheduledLockService
+  )(f: => Future[Unit]
+  )(implicit
+    actorSystem         : ActorSystem,
+    applicationLifecycle: ApplicationLifecycle,
+    ec                  : ExecutionContext
+  ): Unit =
     schedule(label, schedulerConfig) {
       lock
-        .withRenewedLock(f)
+        .withLock(f)
         .map {
           case Some(_) => logger.debug(s"$label finished - releasing lock")
           case None    => logger.debug(s"$label cannot run - lock ${lock.lockId} is taken... skipping update")

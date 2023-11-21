@@ -26,7 +26,7 @@ class SchedulerConfig @Inject() (configuration: Configuration) {
 
   val enabledKey: String              = "scheduler.dataRefresh.enabled"
   val enabled: Boolean                = configuration.get[Boolean](enabledKey)
-  val frequency: FiniteDuration       = configuration.get[FiniteDuration]("scheduler.dataRefresh.interval")
+  val interval: FiniteDuration        = configuration.get[FiniteDuration]("scheduler.dataRefresh.interval")
   val initialDelay: FiniteDuration    = configuration.get[FiniteDuration]("scheduler.dataRefresh.initialDelay")
   val requestThrottle: FiniteDuration = configuration.get[FiniteDuration]("scheduler.dataRefresh.requestThrottle")
 }
