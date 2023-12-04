@@ -45,7 +45,7 @@ class UsersRepository @Inject()(
   // during scheduler run
   override lazy val requiresTtlIndex = false
 
-  private implicit val tc = TransactionConfiguration.strict
+  private implicit val tc: TransactionConfiguration = TransactionConfiguration.strict
 
   def putAll(users: Seq[User]): Future[Unit] =
     withSessionAndTransaction (session =>

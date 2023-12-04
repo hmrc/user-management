@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.usermanagement.service
 
-import akka.actor.ActorSystem
+import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar.{mock, when}

@@ -45,7 +45,7 @@ class UmpConnectorSpec
 
     override lazy val wireMockRootDirectory = "test/resources"
 
-    implicit val hc = HeaderCarrier()
+    implicit val hc: HeaderCarrier = HeaderCarrier()
 
     override def fakeApplication(): Application =
       new GuiceApplicationBuilder()
