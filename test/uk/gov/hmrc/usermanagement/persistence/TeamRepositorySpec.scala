@@ -51,5 +51,19 @@ class TeamRepositorySpec
       res should contain theSameElementsAs latestTeams
     }
   }
+  
+  "TeamsRepository.findByTeamName" should {
+    "Should find team regardless if input is slug or teamName format" in {
+      repository.collection.insertOne(Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "TEaM 1", description = None, documentation = None, slack = None, slackNotification = None)).toFuture().futureValue
+      
+      val expectedTeam = Seq(Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "TEaM 1", description = None, documentation = None, slack = None, slackNotification = None))
+      
+      repository.findByTeamName("team-1").futureValue
+      
+      val res = repository.findAll().futureValue
+      
+      res shouldBe expectedTeam
+    }
+  }
 }
 

@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -25,6 +24,7 @@ import uk.gov.hmrc.usermanagement.model.Team
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.matching.Regex
 
 @Singleton
 class TeamsRepository @Inject()(
@@ -58,9 +58,12 @@ class TeamsRepository @Inject()(
       .find()
       .toFuture()
 
-  def findByTeamName(teamName: String): Future[Option[Team]] =
+  def findByTeamName(teamName: String): Future[Option[Team]] = {
+    val convertSlug = teamName.replace("-", " ")
+    val regexQuery = Filters.regex("teamName", convertSlug, "i")
     collection
-      .find(equal("teamName", teamName))
+      .find(regexQuery)
       .headOption()
+  }
 }
 
