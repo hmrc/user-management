@@ -1,7 +1,7 @@
 
 # user-management
 
-This is a placeholder README.md for a new repository
+This is a service for interfacing with UMP(User Management Portal) and making it easier to view, create and edit via Catalogue.
 
 ### License
 
