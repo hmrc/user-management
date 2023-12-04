@@ -24,7 +24,6 @@ import uk.gov.hmrc.usermanagement.model.Team
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.matching.Regex
 
 @Singleton
 class TeamsRepository @Inject()(
