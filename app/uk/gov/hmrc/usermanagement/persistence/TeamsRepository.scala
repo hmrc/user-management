@@ -16,11 +16,13 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
+import org.mongodb.scala.model.{Collation, CollationStrength, Filters, IndexModel, IndexOptions, Indexes}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.mongo.transaction.{TransactionConfiguration, Transactions}
 import uk.gov.hmrc.usermanagement.model.Team
+import org.mongodb.scala.model.Filters.equal
+import uk.gov.hmrc.usermanagement.persistence.TeamsRepository.caseInsensitiveCollation
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,12 +32,12 @@ class TeamsRepository @Inject()(
  override val mongoComponent: MongoComponent,
 )(implicit
  ec            : ExecutionContext
-) extends PlayMongoRepository(
+) extends PlayMongoRepository[Team](
   collectionName = "teams",
   mongoComponent = mongoComponent,
   domainFormat   = Team.format,
   indexes        = Seq(
-    IndexModel(Indexes.ascending("teamName"),IndexOptions().unique(true).background(true)),
+    IndexModel(Indexes.ascending("teamName"), IndexOptions().unique(true).background(true).collation(caseInsensitiveCollation)),
   )
 ) with Transactions {
   // No ttl required for this collection - gets updated on a scheduler every 20 minutes, and stale data will be deleted
@@ -59,10 +61,18 @@ class TeamsRepository @Inject()(
 
   def findByTeamName(teamName: String): Future[Option[Team]] = {
     val convertSlug = teamName.replace("-", " ")
-    val regexQuery = Filters.regex("teamName", convertSlug, "i")
     collection
-      .find(regexQuery)
+      .find(equal("teamName", convertSlug))
+      .collation(caseInsensitiveCollation)
       .headOption()
   }
+}
+
+object TeamsRepository {
+  private val caseInsensitiveCollation: Collation =
+    Collation.builder()
+      .locale("en")
+      .collationStrength(CollationStrength.SECONDARY)
+      .build
 }
 
