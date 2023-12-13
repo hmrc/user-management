@@ -21,7 +21,7 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.mongo.transaction.{TransactionConfiguration, Transactions}
 import uk.gov.hmrc.usermanagement.model.Team
-import org.mongodb.scala.model.Filters.equal
+import org.mongodb.scala.model.Filters.{equal, or}
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository.caseInsensitiveCollation
 
 import javax.inject.{Inject, Singleton}
@@ -60,11 +60,12 @@ class TeamsRepository @Inject()(
       .toFuture()
 
   def findByTeamName(teamName: String): Future[Option[Team]] = {
-    val convertSlug = teamName.replace("-", " ")
-    collection
-      .find(equal("teamName", convertSlug))
+    collection.
+     find(or(equal("teamName", teamName),
+            equal("teamName", teamName.replace("-", " "))))
       .collation(caseInsensitiveCollation)
       .headOption()
+
   }
 }
 
