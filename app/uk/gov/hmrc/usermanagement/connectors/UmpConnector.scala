@@ -22,7 +22,7 @@ import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json.{Json, OWrites, Reads, __}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
@@ -146,17 +146,17 @@ object UmpConnector {
   }
 
   val umpUserReads: Reads[User] = {
-    implicit val urf = TeamMembership.format
-    ( ( __ \ "displayName"  ).readNullable[String]
-    ~ ( __ \ "familyName"   ).read[String]
-    ~ ( __ \ "givenName"    ).readNullable[String]
-    ~ ( __ \ "organisation" ).readNullable[String]
-    ~ ( __ \ "primaryEmail" ).read[String]
-    ~ ( __ \ "username"     ).read[String]
-    ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
-    ~ ( __ \ "phoneNumber"  ).readNullable[String]
-    ~ ( __ \ "teamsAndRoles").readWithDefault[Seq[TeamMembership]](Seq.empty[TeamMembership])
-    )(User.apply _)
+    ( ( __ \ "displayName"   ).formatNullable[String]
+      ~ ( __ \ "familyName"    ).format[String]
+      ~ ( __ \ "givenName"     ).formatNullable[String]
+      ~ ( __ \ "organisation"  ).formatNullable[String]
+      ~ ( __ \ "primaryEmail"  ).format[String]
+      ~ ( __ \ "username"      ).format[String]
+      ~ ( __ \ "githubUsername").formatNullable[String]
+      ~ ( __ \ "phoneNumber"   ).formatNullable[String]
+      ~ ( __ \ "role"          ).format[String]
+      ~ ( __ \ "teams"         ).format[Seq[String]]
+      )(User.apply, unlift(User.unapply))
   }
 
   val umpTeamReads: Reads[Team] = {

@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.persistence
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
-import uk.gov.hmrc.usermanagement.model.{TeamMembership, User}
+import uk.gov.hmrc.usermanagement.model.{User}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -47,7 +47,8 @@ class UserRepositorySpec
           username       = "old-user",
           githubUsername = None,
           phoneNumber    = None,
-          teamsAndRoles  = Seq(TeamMembership(teamName = "team1", role = "user")),
+          userRole       = "user",
+          teams          = Seq("team1"),
         )
       ).toFuture().futureValue
 
@@ -61,7 +62,8 @@ class UserRepositorySpec
           username       = "joe.bloggs",
           githubUsername = None,
           phoneNumber    = None,
-          teamsAndRoles  = Seq(TeamMembership(teamName = "team2", role = "team-admin"))
+          userRole       = "user",
+          teams          = Seq("team2")
         ),
         User(
           displayName    = Some("Jane Doe"),
@@ -72,7 +74,8 @@ class UserRepositorySpec
           username       = "jane.doe",
           githubUsername = None,
           phoneNumber    = None,
-          teamsAndRoles  = Seq(TeamMembership(teamName = "team3", role = "user"))
+          userRole       = "user",
+          teams          = Seq("team3")
         )
       )
 
@@ -97,11 +100,10 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = None,
         phoneNumber    = None,
-        teamsAndRoles  = Seq(
-          TeamMembership(teamName = "team1", role = "team-admin"),
-          TeamMembership(teamName = "team2", role = "team-admin")
+        userRole       = "team-admin",
+        teams           = Seq("team1","team2")
         )
-      )
+      
 
       val userTwo = User(
         displayName    = Some("John Smith"),
@@ -112,7 +114,8 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = None,
         phoneNumber    = None,
-        teamsAndRoles  = Seq.empty[TeamMembership]
+        userRole       = "user",
+        teams          = Seq()
       )
 
       val userThree = User(
@@ -124,7 +127,8 @@ class UserRepositorySpec
         username       = "jane.doe",
         githubUsername = None,
         phoneNumber    = None,
-        teamsAndRoles  = Seq.empty[TeamMembership]
+        userRole       = "user",
+        teams          = Seq()
       )
 
       val users = Seq(userOne, userTwo, userThree)
@@ -149,10 +153,8 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = None,
         phoneNumber    = None,
-        teamsAndRoles  = Seq(
-          TeamMembership(teamName = "team1", role = "team-admin"),
-          TeamMembership(teamName = "team2", role = "team-admin")
-        )
+        userRole       = "team-admin",
+        teams          = Seq("team1","team2")
       )
 
       val userTwo = User(
@@ -164,7 +166,8 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = None,
         phoneNumber    = None,
-        teamsAndRoles  = Seq(TeamMembership(teamName = "team2", role = "team-admin"))
+        userRole       = "team-admin",
+        teams          = Seq("team1","team2")
       )
 
       val userThree = User(
@@ -176,7 +179,8 @@ class UserRepositorySpec
         username       = "jane.doe",
         githubUsername = None,
         phoneNumber    = None,
-        teamsAndRoles  = Seq(TeamMembership(teamName = "team1", role = "team-admin"))
+        userRole       = "team-admin",
+        teams          = Seq("team1","team2")
       )
 
       val users = Seq(userOne, userTwo, userThree)
@@ -199,10 +203,8 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = Some("joe-github"),
         phoneNumber    = None,
-        teamsAndRoles  = Seq(
-          TeamMembership(teamName = "team1", role = "team-admin"),
-          TeamMembership(teamName = "team2", role = "team-admin")
-        )
+        userRole       = "team-admin",
+        teams          = Seq("team1","team2")
       )
 
       val userTwo = User(
@@ -214,7 +216,8 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = Some("john-github"),
         phoneNumber    = None,
-        teamsAndRoles  = Seq(TeamMembership(teamName = "team2", role = "team-admin"))
+        userRole       = "team-admin",
+        teams          = Seq("team2")
       )
 
       val users = Seq(userOne, userOne.copy(username = "joe.bloggs1"), userTwo)
@@ -239,10 +242,8 @@ class UserRepositorySpec
       username       = "joe.bloggs",
       githubUsername = None,
       phoneNumber    = None,
-      teamsAndRoles  = Seq(
-        TeamMembership(teamName = "team1", role = "team-admin"),
-        TeamMembership(teamName = "team2", role = "team-admin")
-      )
+      userRole       = "team-admin",
+      teams          = Seq("team1", "team2")
     )
 
     val userTwo = User(
@@ -254,7 +255,8 @@ class UserRepositorySpec
       username       = "john.smith",
       githubUsername = None,
       phoneNumber    = None,
-      teamsAndRoles  = Seq(TeamMembership(teamName = "team2", role = "team-admin"))
+      userRole       = "team-admin",
+      teams          = Seq("team2")
     )
 
     "return user information for a given username" in {

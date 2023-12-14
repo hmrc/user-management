@@ -28,7 +28,7 @@ import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -49,8 +49,8 @@ class DataRefreshServiceSpec
     "update the Users and Teams repositories based on the data received from UMP" in new Setup {
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq.empty[TeamMembership]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq.empty[TeamMembership]),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, userRole = "user", teams = Seq()),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole = "user", teams = Seq()),
         )))
 
       when(umpConnector.getAllTeams())
@@ -82,8 +82,8 @@ class DataRefreshServiceSpec
       service.updateUsersAndTeams().futureValue
 
       verify(usersRepository).putAll(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq(TeamMembership(teamName = "team1", role = "user"))),
-        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq(TeamMembership(teamName = "team2", role = "team-admin"))),
+        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, userRole = "user", teams = Seq("team1")),
+        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole = "user", teams = Seq("team2")),
       ))
 
       verify(teamsRepository).putAll(Seq(
@@ -96,8 +96,8 @@ class DataRefreshServiceSpec
     "Handle users existing in more than one team" in new Setup {
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq.empty[TeamMembership]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, teamsAndRoles = Seq.empty[TeamMembership]),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, userRole = "user", teams = Seq()),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole = "user", teams = Seq()),
         )))
 
       when(umpConnector.getAllTeams())
@@ -138,10 +138,8 @@ class DataRefreshServiceSpec
           username       = "joe.bloggs",
           githubUsername = None,
           phoneNumber    = None,
-          teamsAndRoles  = Seq(
-            TeamMembership(teamName = "team1", role = "user"),
-            TeamMembership(teamName = "team2", role = "team-admin")
-          )
+          userRole       = "team-admin",
+          teams          = Seq("team1", "team2")
         ),
         User(
           displayName    = Some("Jane Doe"),
@@ -152,10 +150,8 @@ class DataRefreshServiceSpec
           username       = "jane.doe",
           githubUsername = None,
           phoneNumber    = None,
-          teamsAndRoles  = Seq(
-            TeamMembership(teamName = "team1", role = "team-admin"),
-            TeamMembership(teamName = "team2", role = "user")
-          )
+          userRole       = "team-admin",
+          teams          = Seq("team1", "team2")
         ),
       ))
 
