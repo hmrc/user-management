@@ -116,7 +116,7 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         userRole       = "user",
-        teams          = Seq()
+        teams          = Seq.empty[String]
       )
 
       val userThree = User(
@@ -129,7 +129,7 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         userRole       = "user",
-        teams          = Seq()
+        teams          = Seq.empty[String]
       )
 
       val users = Seq(userOne, userTwo, userThree)

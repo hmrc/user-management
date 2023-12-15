@@ -81,8 +81,8 @@ class UmpConnectorSpec
           val res = userManagementConnector.getAllUsers().futureValue
 
           res should contain theSameElementsAs Seq(
-              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), userRole="user", teams = Seq.empty),
-              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole="user", teams = Seq.empty)
+              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), userRole="user", teams = Seq.empty[String]),
+              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole="user", teams = Seq.empty[String])
             )
         }
       }
@@ -133,8 +133,8 @@ class UmpConnectorSpec
 
           res.length shouldBe 2
           res should contain theSameElementsAs Seq(
-            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), userRole="user", teams = Seq.empty),
-            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole="user", teams = Seq.empty)
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), userRole="user", teams = Seq.empty[String]),
+            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, userRole="user", teams = Seq.empty[String])
           )
         }
       }
