@@ -82,6 +82,7 @@ class UserRepositorySpec
       repository.putAll(latestUsers).futureValue
 
       val res = repository.find().futureValue
+      println(s"RESULT : $res")
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
@@ -154,7 +155,7 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         userRole       = "team-admin",
-        teams          = Seq("team1","team2")
+        teams          = Seq("team1")
       )
 
       val userTwo = User(
@@ -187,10 +188,10 @@ class UserRepositorySpec
 
       repository.collection.insertMany(users).toFuture().futureValue
 
-      val res = repository.find(Some("team1")).futureValue
+      val res = repository.find(Some("team2")).futureValue
 
       res.length shouldBe 2
-      res should contain theSameElementsAs Seq(userOne, userThree)
+      res should contain theSameElementsAs Seq(userTwo, userThree)
     }
 
     "find a user by github username" in {

@@ -144,19 +144,19 @@ object UmpConnector {
       ~ (__ \ "password").write[String]
       )(unlift(UmpLoginRequest.unapply))
   }
-
+  
   val umpUserReads: Reads[User] = {
-    ( ( __ \ "displayName"   ).formatNullable[String]
-      ~ ( __ \ "familyName"    ).format[String]
-      ~ ( __ \ "givenName"     ).formatNullable[String]
-      ~ ( __ \ "organisation"  ).formatNullable[String]
-      ~ ( __ \ "primaryEmail"  ).format[String]
-      ~ ( __ \ "username"      ).format[String]
-      ~ ( __ \ "githubUsername").formatNullable[String]
-      ~ ( __ \ "phoneNumber"   ).formatNullable[String]
-      ~ ( __ \ "role"          ).format[String]
-      ~ ( __ \ "teams"         ).format[Seq[String]]
-      )(User.apply, unlift(User.unapply))
+    ( ( __ \ "displayName"  ).readNullable[String]
+      ~ ( __ \ "familyName"   ).read[String]
+      ~ ( __ \ "givenName"    ).readNullable[String]
+      ~ ( __ \ "organisation" ).readNullable[String]
+      ~ ( __ \ "primaryEmail" ).read[String]
+      ~ ( __ \ "username"     ).read[String]
+      ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
+      ~ ( __ \ "phoneNumber"  ).readNullable[String]
+      ~ ( __ \ "userRole"     ).read[String]("user")
+      ~ ( __ \ "teams"        ).read[Seq[String]](Seq.empty[String])
+      )(User.apply _)
   }
 
   val umpTeamReads: Reads[Team] = {

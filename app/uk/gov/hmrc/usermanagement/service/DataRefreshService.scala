@@ -60,8 +60,16 @@ class DataRefreshService @Inject()(
       .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))
       .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
       .map(_.flatten)
-
+  
   private def addMembershipsToUsers(users: Seq[User], teams: Seq[Team]): Seq[User] = {
-    users
+    val teamAndMembers: Seq[(String, Member)] = teams.flatMap(team => team.members.map(member => team.teamName -> member))
+    
+    users.map { user =>
+      val membershipsForUser = teamAndMembers.filter(_._2.username == user.username)
+      val roleForUser = membershipsForUser.headOption.map(_._2.role).getOrElse("user")
+      val teamsForUser = membershipsForUser.map(_._1)
+      
+      user.copy( userRole = roleForUser, teams = teamsForUser)
+    }
   }
 }
