@@ -38,17 +38,17 @@ class DataRefreshService @Inject()(
 
   def updateUsersAndTeams()(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] = {
     for {
-      umpUsers                <- umpConnector.getAllUsers()
-      umpTeamNames            <- umpConnector.getAllTeams().map(_.map(_.teamName))
-      _                       =  logger.info("Successfully retrieved the latest users and teams data from UMP")
-      teamsWithMembers        <- getTeamsWithMembers(umpTeamNames)
-      usersWithMemberships    =  addMembershipsToUsers(umpUsers, teamsWithMembers)
-      _                       =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
-                                  s"human users into their respective repositories")
-      _                       <- usersRepository.putAll(usersWithMemberships)
-      _                       =  logger.info("Successfully refreshed users data from UMP.")
-      _                       <- teamsRepository.putAll(teamsWithMembers)
-      _                       =  logger.info("Successfully refreshed teams data from UMP.")
+      umpUsers             <- umpConnector.getAllUsers()
+      umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
+      _                    =  logger.info("Successfully retrieved the latest users and teams data from UMP")
+      teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
+      usersWithMemberships =  addMembershipsToUsers(umpUsers, teamsWithMembers)
+      _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
+                                s"human users into their respective repositories")
+      _                    <- usersRepository.putAll(usersWithMemberships)
+      _                    =  logger.info("Successfully refreshed users data from UMP.")
+      _                    <- teamsRepository.putAll(teamsWithMembers)
+      _                    =  logger.info("Successfully refreshed teams data from UMP.")
     } yield ()
   }
 
@@ -66,10 +66,8 @@ class DataRefreshService @Inject()(
     
     users.map { user =>
       val membershipsForUser = teamAndMembers.filter(_._2.username == user.username)
-      val roleForUser = membershipsForUser.headOption.map(_._2.role).getOrElse("user")
       val teamsForUser = membershipsForUser.map(_._1)
-      
-      user.copy( userRole = roleForUser, teams = teamsForUser)
+      user.copy(teams = teamsForUser)
     }
   }
 }

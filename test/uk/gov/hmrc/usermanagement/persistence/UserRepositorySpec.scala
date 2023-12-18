@@ -47,7 +47,7 @@ class UserRepositorySpec
           username       = "old-user",
           githubUsername = None,
           phoneNumber    = None,
-          userRole       = "user",
+          role       = "user",
           teams          = Seq("team1"),
         )
       ).toFuture().futureValue
@@ -62,7 +62,7 @@ class UserRepositorySpec
           username       = "joe.bloggs",
           githubUsername = None,
           phoneNumber    = None,
-          userRole       = "user",
+          role       = "user",
           teams          = Seq("team2")
         ),
         User(
@@ -74,7 +74,7 @@ class UserRepositorySpec
           username       = "jane.doe",
           githubUsername = None,
           phoneNumber    = None,
-          userRole       = "user",
+          role       = "user",
           teams          = Seq("team3")
         )
       )
@@ -82,7 +82,6 @@ class UserRepositorySpec
       repository.putAll(latestUsers).futureValue
 
       val res = repository.find().futureValue
-      println(s"RESULT : $res")
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
@@ -101,7 +100,7 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = None,
         phoneNumber    = None,
-        userRole       = "team-admin",
+        role       = "team-admin",
         teams           = Seq("team1","team2")
         )
       
@@ -115,7 +114,7 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = None,
         phoneNumber    = None,
-        userRole       = "user",
+        role       = "user",
         teams          = Seq.empty[String]
       )
 
@@ -128,7 +127,7 @@ class UserRepositorySpec
         username       = "jane.doe",
         githubUsername = None,
         phoneNumber    = None,
-        userRole       = "user",
+        role       = "user",
         teams          = Seq.empty[String]
       )
 
@@ -154,7 +153,7 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = None,
         phoneNumber    = None,
-        userRole       = "team-admin",
+        role       = "team-admin",
         teams          = Seq("team1")
       )
 
@@ -167,7 +166,7 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = None,
         phoneNumber    = None,
-        userRole       = "team-admin",
+        role       = "team-admin",
         teams          = Seq("team1","team2")
       )
 
@@ -180,7 +179,7 @@ class UserRepositorySpec
         username       = "jane.doe",
         githubUsername = None,
         phoneNumber    = None,
-        userRole       = "team-admin",
+        role       = "team-admin",
         teams          = Seq("team1","team2")
       )
 
@@ -204,7 +203,7 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = Some("joe-github"),
         phoneNumber    = None,
-        userRole       = "team-admin",
+        role       = "team-admin",
         teams          = Seq("team1","team2")
       )
 
@@ -217,7 +216,7 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = Some("john-github"),
         phoneNumber    = None,
-        userRole       = "team-admin",
+        role       = "team-admin",
         teams          = Seq("team2")
       )
 
@@ -243,7 +242,7 @@ class UserRepositorySpec
       username       = "joe.bloggs",
       githubUsername = None,
       phoneNumber    = None,
-      userRole       = "team-admin",
+      role           = "team-admin",
       teams          = Seq("team1", "team2")
     )
 
@@ -256,7 +255,7 @@ class UserRepositorySpec
       username       = "john.smith",
       githubUsername = None,
       phoneNumber    = None,
-      userRole       = "team-admin",
+      role           = "team-admin",
       teams          = Seq("team2")
     )
 

@@ -28,22 +28,22 @@ case class User(
   username      : String,
   githubUsername: Option[String],
   phoneNumber   : Option[String],
-  userRole      : String,
+  role          : String,
   teams         : Seq[String]
 )
 
 object User {
   val format: OFormat[User] = {
     ( ( __ \ "displayName"   ).formatNullable[String]
-      ~ ( __ \ "familyName"    ).format[String]
-      ~ ( __ \ "givenName"     ).formatNullable[String]
-      ~ ( __ \ "organisation"  ).formatNullable[String]
-      ~ ( __ \ "primaryEmail"  ).format[String]
-      ~ ( __ \ "username"      ).format[String]
-      ~ ( __ \ "githubUsername").formatNullable[String]
-      ~ ( __ \ "phoneNumber"   ).formatNullable[String]
-      ~ ( __ \ "role"          ).format[String]
-      ~ ( __ \ "teams"         ).format[Seq[String]]
-      )(User.apply, unlift(User.unapply))
+    ~ ( __ \ "familyName"    ).format[String]
+    ~ ( __ \ "givenName"     ).formatNullable[String]
+    ~ ( __ \ "organisation"  ).formatNullable[String]
+    ~ ( __ \ "primaryEmail"  ).format[String]
+    ~ ( __ \ "username"      ).format[String]
+    ~ ( __ \ "githubUsername").formatNullable[String]
+    ~ ( __ \ "phoneNumber"   ).formatNullable[String]
+    ~ ( __ \ "userRole"      ).format[String]
+    ~ ( __ \ "teams"         ).format[Seq[String]]
+    )(User.apply, unlift(User.unapply))
   }
 }

@@ -66,8 +66,6 @@ class UsersRepository @Inject()(
       github.map(username => equal("githubUsername", username))
     ).flatten
     
-    println(s"FILTERS: $filters")
-
     collection.find(Filters.and(filters: _*)).toFuture()
   }
 

@@ -147,16 +147,16 @@ object UmpConnector {
   
   val umpUserReads: Reads[User] = {
     ( ( __ \ "displayName"  ).readNullable[String]
-      ~ ( __ \ "familyName"   ).read[String]
-      ~ ( __ \ "givenName"    ).readNullable[String]
-      ~ ( __ \ "organisation" ).readNullable[String]
-      ~ ( __ \ "primaryEmail" ).read[String]
-      ~ ( __ \ "username"     ).read[String]
-      ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
-      ~ ( __ \ "phoneNumber"  ).readNullable[String]
-      ~ ( __ \ "userRole"     ).read[String]("user")
-      ~ ( __ \ "teams"        ).read[Seq[String]](Seq.empty[String])
-      )(User.apply _)
+    ~ ( __ \ "familyName"   ).read[String]
+    ~ ( __ \ "givenName"    ).readNullable[String]
+    ~ ( __ \ "organisation" ).readNullable[String]
+    ~ ( __ \ "primaryEmail" ).read[String]
+    ~ ( __ \ "username"     ).read[String]
+    ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
+    ~ ( __ \ "phoneNumber"  ).readNullable[String]
+    ~ ( __ \ "userRole"     ).read[String]("user")
+    ~ ( __ \ "teams"        ).read[Seq[String]](Seq.empty[String])
+    )(User.apply _)
   }
 
   val umpTeamReads: Reads[Team] = {
