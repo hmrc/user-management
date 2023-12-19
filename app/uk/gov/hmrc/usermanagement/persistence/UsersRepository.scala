@@ -61,13 +61,12 @@ class UsersRepository @Inject()(
   ): Future[Seq[User]] = {
 
     val filters = Seq(
-      // currently we are only interested in surfacing users in teams
-      Some(and(exists("teamsAndRoles"), notEqual("teamsAndRoles", Seq.empty))),
-      team.map(teamName => equal("teamsAndRoles.teamName", teamName)),
+      Some(and(exists("teamNames"), notEqual("teamNames", Seq.empty))),
+      team.map(teamName => equal("teamNames", teamName)),
       github.map(username => equal("githubUsername", username))
     ).flatten
-
-    collection.find(Filters.and(filters:_*)).toFuture()
+    
+    collection.find(Filters.and(filters: _*)).toFuture()
   }
 
   def findByUsername(username: String): Future[Option[User]] =

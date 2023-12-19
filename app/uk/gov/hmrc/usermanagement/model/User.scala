@@ -28,12 +28,12 @@ case class User(
   username      : String,
   githubUsername: Option[String],
   phoneNumber   : Option[String],
-  teamsAndRoles : Seq[TeamMembership]
+  role          : String,
+  teamNames     : Seq[String]
 )
 
 object User {
   val format: OFormat[User] = {
-    implicit val urf = TeamMembership.format
     ( ( __ \ "displayName"   ).formatNullable[String]
     ~ ( __ \ "familyName"    ).format[String]
     ~ ( __ \ "givenName"     ).formatNullable[String]
@@ -42,20 +42,8 @@ object User {
     ~ ( __ \ "username"      ).format[String]
     ~ ( __ \ "githubUsername").formatNullable[String]
     ~ ( __ \ "phoneNumber"   ).formatNullable[String]
-    ~ ( __ \ "teamsAndRoles" ).format[Seq[TeamMembership]]
-     )(User.apply, unlift(User.unapply))
-  }
-}
-
-case class TeamMembership(
-  teamName: String,
-  role    : String
-)
-
-object TeamMembership {
-  val format: OFormat[TeamMembership] = {
-    ( (__ \ "teamName").format[String]
-    ~ (__ \ "role"    ).format[String]
-    )(TeamMembership.apply, unlift(TeamMembership.unapply))
+    ~ ( __ \ "role"          ).format[String]
+    ~ ( __ \ "teamNames"     ).format[Seq[String]]
+    )(User.apply, unlift(User.unapply))
   }
 }

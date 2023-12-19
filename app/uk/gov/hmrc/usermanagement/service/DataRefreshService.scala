@@ -22,7 +22,7 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
+import uk.gov.hmrc.usermanagement.model.{Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -38,17 +38,17 @@ class DataRefreshService @Inject()(
 
   def updateUsersAndTeams()(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] = {
     for {
-      umpUsers                <- umpConnector.getAllUsers()
-      umpTeamNames            <- umpConnector.getAllTeams().map(_.map(_.teamName))
-      _                       =  logger.info("Successfully retrieved the latest users and teams data from UMP")
-      teamsWithMembers        <- getTeamsWithMembers(umpTeamNames)
-      usersWithMemberships    =  addMembershipsToUsers(umpUsers, teamsWithMembers)
-      _                       =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
-                                  s"human users into their respective repositories")
-      _                       <- usersRepository.putAll(usersWithMemberships)
-      _                       =  logger.info("Successfully refreshed users data from UMP.")
-      _                       <- teamsRepository.putAll(teamsWithMembers)
-      _                       =  logger.info("Successfully refreshed teams data from UMP.")
+      umpUsers             <- umpConnector.getAllUsers()
+      umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
+      _                    =  logger.info("Successfully retrieved the latest users and teams data from UMP")
+      teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
+      usersWithMemberships =  addMembershipsToUsers(umpUsers, teamsWithMembers)
+      _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
+                                s"human users into their respective repositories")
+      _                    <- usersRepository.putAll(usersWithMemberships)
+      _                    =  logger.info("Successfully refreshed users data from UMP.")
+      _                    <- teamsRepository.putAll(teamsWithMembers)
+      _                    =  logger.info("Successfully refreshed teams data from UMP.")
     } yield ()
   }
 
@@ -60,14 +60,12 @@ class DataRefreshService @Inject()(
       .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))
       .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
       .map(_.flatten)
-
-  private def addMembershipsToUsers(users: Seq[User], teams: Seq[Team]): Seq[User] = {
-    val teamAndMembers: Seq[(String, Member)] = teams.flatMap(team => team.members.map(member => team.teamName -> member))
-    users.map{
-      user =>
-        val membershipsForUser    = teamAndMembers.filter(_._2.username == user.username)
-        val teamsAndRolesForUser  = membershipsForUser.map{ case (team, membership) => TeamMembership(team, membership.role)}.sortBy(_.teamName)
-        user.copy(teamsAndRoles   = teamsAndRolesForUser)
+  
+  private def addMembershipsToUsers(users: Seq[User], teamsWithMembers: Seq[Team]): Seq[User] =
+    users.map { user =>
+      user.copy(teamNames = teamsWithMembers.collect {
+        case team if user.displayName.exists(username => team.members.flatMap(_.displayName).contains(username)) =>
+          team.teamName
+      })
     }
-  }
 }

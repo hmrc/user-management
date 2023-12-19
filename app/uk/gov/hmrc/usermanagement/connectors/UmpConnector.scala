@@ -22,7 +22,7 @@ import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json.{Json, OWrites, Reads, __}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.{Member, Team, TeamMembership, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
@@ -144,9 +144,8 @@ object UmpConnector {
       ~ (__ \ "password").write[String]
       )(unlift(UmpLoginRequest.unapply))
   }
-
+  
   val umpUserReads: Reads[User] = {
-    implicit val urf = TeamMembership.format
     ( ( __ \ "displayName"  ).readNullable[String]
     ~ ( __ \ "familyName"   ).read[String]
     ~ ( __ \ "givenName"    ).readNullable[String]
@@ -155,7 +154,8 @@ object UmpConnector {
     ~ ( __ \ "username"     ).read[String]
     ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
-    ~ ( __ \ "teamsAndRoles").readWithDefault[Seq[TeamMembership]](Seq.empty[TeamMembership])
+    ~ ( __ \ "role"         ).readWithDefault[String]("user")
+    ~ ( __ \ "teamNames"    ).readWithDefault[Seq[String]](Seq.empty[String])
     )(User.apply _)
   }
 
