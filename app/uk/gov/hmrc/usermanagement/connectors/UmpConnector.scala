@@ -154,8 +154,8 @@ object UmpConnector {
     ~ ( __ \ "username"     ).read[String]
     ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
-    ~ ( __ \ "userRole"     ).read[String]("user")
-    ~ ( __ \ "teams"        ).read[Seq[String]](Seq.empty[String])
+    ~ ( __ \ "role"         ).readWithDefault[String]("user")
+    ~ ( __ \ "teamNames"    ).readWithDefault[Seq[String]](Seq.empty[String])
     )(User.apply _)
   }
 

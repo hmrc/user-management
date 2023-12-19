@@ -61,8 +61,8 @@ class UsersRepository @Inject()(
   ): Future[Seq[User]] = {
 
     val filters = Seq(
-      Some(and(exists("teams"), notEqual("teams", Seq.empty))),
-      team.map(teamName => equal("teams", teamName)),
+      Some(and(exists("teamNames"), notEqual("teamNames", Seq.empty))),
+      team.map(teamName => equal("teamNames", teamName)),
       github.map(username => equal("githubUsername", username))
     ).flatten
     

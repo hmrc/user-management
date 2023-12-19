@@ -47,8 +47,8 @@ class UserRepositorySpec
           username       = "old-user",
           githubUsername = None,
           phoneNumber    = None,
-          role       = "user",
-          teams          = Seq("team1"),
+          role           = "user",
+          teamNames      = Seq("team1"),
         )
       ).toFuture().futureValue
 
@@ -62,8 +62,8 @@ class UserRepositorySpec
           username       = "joe.bloggs",
           githubUsername = None,
           phoneNumber    = None,
-          role       = "user",
-          teams          = Seq("team2")
+          role           = "user",
+          teamNames      = Seq("team2")
         ),
         User(
           displayName    = Some("Jane Doe"),
@@ -74,14 +74,15 @@ class UserRepositorySpec
           username       = "jane.doe",
           githubUsername = None,
           phoneNumber    = None,
-          role       = "user",
-          teams          = Seq("team3")
+          role           = "user",
+          teamNames      = Seq("team3")
         )
       )
 
       repository.putAll(latestUsers).futureValue
-
+      
       val res = repository.find().futureValue
+      println(s"RESULT: $res")
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
@@ -100,8 +101,8 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = None,
         phoneNumber    = None,
-        role       = "team-admin",
-        teams           = Seq("team1","team2")
+        role           = "team-admin",
+        teamNames      = Seq("team1","team2")
         )
       
 
@@ -114,8 +115,8 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = None,
         phoneNumber    = None,
-        role       = "user",
-        teams          = Seq.empty[String]
+        role           = "user",
+        teamNames      = Seq.empty[String]
       )
 
       val userThree = User(
@@ -128,7 +129,7 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         role       = "user",
-        teams          = Seq.empty[String]
+        teamNames          = Seq.empty[String]
       )
 
       val users = Seq(userOne, userTwo, userThree)
@@ -153,8 +154,8 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = None,
         phoneNumber    = None,
-        role       = "team-admin",
-        teams          = Seq("team1")
+        role           = "team-admin",
+        teamNames      = Seq("team1")
       )
 
       val userTwo = User(
@@ -166,8 +167,8 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = None,
         phoneNumber    = None,
-        role       = "team-admin",
-        teams          = Seq("team1","team2")
+        role           = "team-admin",
+        teamNames      = Seq("team1","team2")
       )
 
       val userThree = User(
@@ -179,8 +180,8 @@ class UserRepositorySpec
         username       = "jane.doe",
         githubUsername = None,
         phoneNumber    = None,
-        role       = "team-admin",
-        teams          = Seq("team1","team2")
+        role           = "team-admin",
+        teamNames      = Seq("team1","team2")
       )
 
       val users = Seq(userOne, userTwo, userThree)
@@ -203,8 +204,8 @@ class UserRepositorySpec
         username       = "joe.bloggs",
         githubUsername = Some("joe-github"),
         phoneNumber    = None,
-        role       = "team-admin",
-        teams          = Seq("team1","team2")
+        role           = "team-admin",
+        teamNames      = Seq("team1","team2")
       )
 
       val userTwo = User(
@@ -216,8 +217,8 @@ class UserRepositorySpec
         username       = "john.smith",
         githubUsername = Some("john-github"),
         phoneNumber    = None,
-        role       = "team-admin",
-        teams          = Seq("team2")
+        role           = "team-admin",
+        teamNames      = Seq("team2")
       )
 
       val users = Seq(userOne, userOne.copy(username = "joe.bloggs1"), userTwo)
@@ -243,7 +244,7 @@ class UserRepositorySpec
       githubUsername = None,
       phoneNumber    = None,
       role           = "team-admin",
-      teams          = Seq("team1", "team2")
+      teamNames      = Seq("team1", "team2")
     )
 
     val userTwo = User(
@@ -256,7 +257,7 @@ class UserRepositorySpec
       githubUsername = None,
       phoneNumber    = None,
       role           = "team-admin",
-      teams          = Seq("team2")
+      teamNames      = Seq("team2")
     )
 
     "return user information for a given username" in {

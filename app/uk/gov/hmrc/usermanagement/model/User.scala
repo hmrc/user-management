@@ -29,7 +29,7 @@ case class User(
   githubUsername: Option[String],
   phoneNumber   : Option[String],
   role          : String,
-  teams         : Seq[String]
+  teamNames     : Seq[String]
 )
 
 object User {
@@ -42,8 +42,8 @@ object User {
     ~ ( __ \ "username"      ).format[String]
     ~ ( __ \ "githubUsername").formatNullable[String]
     ~ ( __ \ "phoneNumber"   ).formatNullable[String]
-    ~ ( __ \ "userRole"      ).format[String]
-    ~ ( __ \ "teams"         ).format[Seq[String]]
+    ~ ( __ \ "role"          ).format[String]
+    ~ ( __ \ "teamNames"     ).format[Seq[String]]
     )(User.apply, unlift(User.unapply))
   }
 }
