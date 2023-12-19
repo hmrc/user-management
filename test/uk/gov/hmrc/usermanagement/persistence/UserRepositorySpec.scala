@@ -82,7 +82,6 @@ class UserRepositorySpec
       repository.putAll(latestUsers).futureValue
       
       val res = repository.find().futureValue
-      println(s"RESULT: $res")
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
