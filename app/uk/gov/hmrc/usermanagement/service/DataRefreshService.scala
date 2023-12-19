@@ -22,7 +22,7 @@ import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
-import uk.gov.hmrc.usermanagement.model.{Team, User}
+import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -61,11 +61,14 @@ class DataRefreshService @Inject()(
       .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
       .map(_.flatten)
   
-  private def addMembershipsToUsers(users: Seq[User], teamsWithMembers: Seq[Team]): Seq[User] =
+  private def addMembershipsToUsers(users: Seq[User], teamsWithMembers: Seq[Team]): Seq[User] = {
+    val teamAndMembers: Seq[(String, Member)] = teamsWithMembers.flatMap(team => team.members.map(member => team.teamName -> member))
     users.map { user =>
-      user.copy(teamNames = teamsWithMembers.collect {
-        case team if user.displayName.exists(username => team.members.flatMap(_.displayName).contains(username)) =>
-          team.teamName
-      })
+      val membershipsForUser = teamAndMembers.filter(_._2.username == user.username)
+      user.copy(
+        teamNames = membershipsForUser.map(_._1),
+        role      = membershipsForUser.map(_._2).headOption.fold("user")(_.role)
+      )
     }
+  }
 }
