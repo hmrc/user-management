@@ -50,7 +50,7 @@ class DataRefreshServiceSpec
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
           User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq.empty[String]),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]), //role defaulted to "user" should get updated to admin when refreshed
         )))
 
       when(umpConnector.getAllTeams())
