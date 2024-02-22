@@ -10,4 +10,7 @@
 # Failing to follow this rule may result in test routes deployed in production.
 
 # Add all the application routes to the prod.routes file
-->         /                          prod.Routes
+
+POST    /test-only/teams  @uk.gov.hmrc.usermanagement.testonly.IntegrationTestSupportController.addTeams()
+DELETE  /test-only/teams  @uk.gov.hmrc.usermanagement.testonly.IntegrationTestSupportController.deleteTeams()
+->      /                 prod.Routes
