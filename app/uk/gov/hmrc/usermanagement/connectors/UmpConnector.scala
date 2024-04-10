@@ -29,7 +29,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
- class UmpConnector @Inject()(
+class UmpConnector @Inject()(
   config        : Configuration,
   httpClientV2  : HttpClientV2,
   tokenCache    : AsyncCacheApi
@@ -54,8 +54,8 @@ import scala.concurrent.{ExecutionContext, Future}
     implicit val hc: HeaderCarrier             = HeaderCarrier()
     for {
       token <- httpClientV2.post(url"$userManagementLoginUrl")
-        .withBody(Json.toJson(UmpLoginRequest(username, password)))
-        .execute[UmpAuthToken]
+                 .withBody(Json.toJson(UmpLoginRequest(username, password)))
+                 .execute[UmpAuthToken]
       _      = logger.info("logged into UMP")
     } yield token
   }
@@ -69,13 +69,14 @@ import scala.concurrent.{ExecutionContext, Future}
     for {
       token <- getToken()
       resp  <- httpClientV2
-        .get(url"$userManagementBaseUrl/v2/organisations/users")
-        .setHeader(token.asHeaders():_*)
-        .execute[Seq[User]]
-    } yield resp
-      .filterNot { user =>
-        nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
-      }
+                 .get(url"$userManagementBaseUrl/v2/organisations/users")
+                 .setHeader(token.asHeaders():_*)
+                 .execute[Seq[User]]
+    } yield
+      resp
+        .filterNot { user =>
+          nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
+        }
   }
 
   def getAllTeams()(implicit hc: HeaderCarrier): Future[Seq[Team]] = {
@@ -87,9 +88,9 @@ import scala.concurrent.{ExecutionContext, Future}
     for {
       token <- getToken()
       resp  <- httpClientV2
-        .get(url"$userManagementBaseUrl/v2/organisations/teams")
-        .setHeader(token.asHeaders():_*)
-        .execute[Seq[Team]]
+                 .get(url"$userManagementBaseUrl/v2/organisations/teams")
+                 .setHeader(token.asHeaders():_*)
+                 .execute[Seq[Team]]
     } yield resp
   }
 
@@ -98,19 +99,19 @@ import scala.concurrent.{ExecutionContext, Future}
     for {
       token <- getToken()
       resp  <- httpClientV2
-        .get(url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members")
-        .setHeader(token.asHeaders():_*)
-        .execute[Option[Team]]
-        .recover {
-          case UpstreamErrorResponse.WithStatusCode(422) =>
-            logger.warn(s"Received a 422 response when getting membersForTeam for teamname: $teamName. " +
-              s"This is a known issue that can occur when a team has been created in UMP with invalid characters in its name.")
-            None
-          case UpstreamErrorResponse.WithStatusCode(404) =>
-            logger.warn(s"Received a 404 response when getting membersForTeam for teamname: $teamName. " +
-              s"This indicates the team does not exist within UMP.")
-            None
-        }
+                 .get(url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members")
+                 .setHeader(token.asHeaders():_*)
+                 .execute[Option[Team]]
+                 .recover {
+                   case UpstreamErrorResponse.WithStatusCode(422) =>
+                     logger.warn(s"Received a 422 response when getting membersForTeam for teamname: $teamName. " +
+                       s"This is a known issue that can occur when a team has been created in UMP with invalid characters in its name.")
+                     None
+                   case UpstreamErrorResponse.WithStatusCode(404) =>
+                     logger.warn(s"Received a 404 response when getting membersForTeam for teamname: $teamName. " +
+                       s"This indicates the team does not exist within UMP.")
+                     None
+                 }
     } yield resp.map { team =>
       team.copy(members = team.members.filterNot { member =>
         nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_))
@@ -121,12 +122,12 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object UmpConnector {
 
-  val nonHumanIdentifiers: Seq[String] = Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
+  val nonHumanIdentifiers: Seq[String] =
+    Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
 
   case class UmpAuthToken(token: String, uid: String) {
-    def asHeaders(): Seq[(String, String)] = {
+    def asHeaders(): Seq[(String, String)] =
       Seq( "Token" -> token, "requester" -> uid)
-    }
   }
 
   object UmpAuthToken {
@@ -136,7 +137,10 @@ object UmpConnector {
       )(UmpAuthToken.apply _)
   }
 
-  case class UmpLoginRequest(username: String, password:String)
+  case class UmpLoginRequest(
+    username: String,
+    password: String
+  )
 
   object UmpLoginRequest {
     val writes: OWrites[UmpLoginRequest] =
@@ -144,7 +148,7 @@ object UmpConnector {
       ~ (__ \ "password").write[String]
       )(unlift(UmpLoginRequest.unapply))
   }
-  
+
   val umpUserReads: Reads[User] = {
     ( ( __ \ "displayName"  ).readNullable[String]
     ~ ( __ \ "familyName"   ).read[String]

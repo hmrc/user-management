@@ -19,10 +19,9 @@ package uk.gov.hmrc.usermanagement.connectors
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, stubFor, urlEqualTo}
 import org.mockito.scalatest.MockitoSugar
-import org.scalatest.{BeforeAndAfterEach, EitherValues}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import org.scalatest.matchers.should
-import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
@@ -31,114 +30,109 @@ import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 
 class UmpConnectorSpec
-  extends AnyWordSpecLike
-    with should.Matchers
-    with MockitoSugar
-    with ScalaFutures
-    with WireMockSupport
-    with IntegrationPatience
-    with HttpClientV2Support
-    with EitherValues
-    with BeforeAndAfterEach
-    with GuiceOneServerPerSuite
-{
+  extends AnyWordSpec
+     with Matchers
+     with MockitoSugar
+     with ScalaFutures
+     with WireMockSupport
+     with IntegrationPatience
+     with HttpClientV2Support
+     with GuiceOneServerPerSuite {
 
-    override lazy val wireMockRootDirectory = "test/resources"
+  private implicit val hc: HeaderCarrier = HeaderCarrier()
 
-    implicit val hc: HeaderCarrier = HeaderCarrier()
-
-    override def fakeApplication(): Application =
-      new GuiceApplicationBuilder()
-        .configure(
-          "microservice.services.user-management.port"       -> wireMockPort,
-          "microservice.services.user-management.host"       -> wireMockHost,
-          "play.http.requestHandler"                         -> "play.api.http.DefaultHttpRequestHandler",
-          "metrics.jvm"                                      -> false,
-          "ump.auth.username"                                -> "user",
-          "ump.auth.password"                                -> "pass",
-          "ump.auth.tokenTTL"                                -> "1 hour",
-          "ump.loginUrl"                                     -> s"$wireMockUrl/v1/login",
-          "ump.baseUrl"                                      -> s"$wireMockUrl",
-        )
-        .build()
+  override def fakeApplication(): Application =
+    new GuiceApplicationBuilder()
+      .configure(
+        "microservice.services.user-management.port"       -> wireMockPort,
+        "microservice.services.user-management.host"       -> wireMockHost,
+        "play.http.requestHandler"                         -> "play.api.http.DefaultHttpRequestHandler",
+        "metrics.jvm"                                      -> false,
+        "ump.auth.username"                                -> "user",
+        "ump.auth.password"                                -> "pass",
+        "ump.auth.tokenTTL"                                -> "1 hour",
+        "ump.loginUrl"                                     -> s"$wireMockUrl/v1/login",
+        "ump.baseUrl"                                      -> s"$wireMockUrl",
+      )
+      .build()
 
 
-    private val userManagementConnector: UmpConnector =
-      app.injector.instanceOf[UmpConnector]
+  private val userManagementConnector: UmpConnector =
+    app.injector.instanceOf[UmpConnector]
 
-    "getAllUsers" when {
-      "parsing a valid response" should {
-        "return a sequence of Users" in new Setup {
-          stubFor(
-            WireMock.get(urlEqualTo("/v2/organisations/users"))
-              .willReturn(
-                aResponse()
-                  .withStatus(200)
-                  .withBodyFile("valid-users.json")
-              )
-          )
-
-          val res = userManagementConnector.getAllUsers().futureValue
-
-          res should contain theSameElementsAs Seq(
-              User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String]),
-              User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String])
+  "getAllUsers" when {
+    "parsing a valid response" should {
+      "return a sequence of Users" in new Setup {
+        stubFor(
+          WireMock.get(urlEqualTo("/v2/organisations/users"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("valid-users.json")
             )
-        }
-      }
+        )
 
-      "parsing an invalid JSON response" should {
-        "throw a JSValidationException" in new Setup {
-          stubFor(
-            WireMock.get(urlEqualTo("/v2/organisations/users"))
-              .willReturn(
-                aResponse()
-                  .withStatus(200)
-                  .withBodyFile("invalid-users.json")
-              )
-          )
+        val res = userManagementConnector.getAllUsers().futureValue
 
-          val res = userManagementConnector.getAllUsers().failed.futureValue
-          res shouldBe a [JsValidationException]
-        }
-      }
-
-      "it receives a non 200 status code response" should {
-        "return an UpstreamErrorResponse" in new Setup {
-          stubFor(
-            WireMock.get(urlEqualTo("/v2/organisations/users"))
-              .willReturn(
-                aResponse()
-                  .withStatus(500)
-              )
-          )
-
-          val res = userManagementConnector.getAllUsers().failed.futureValue
-          res shouldBe a [UpstreamErrorResponse]
-        }
-      }
-
-      "the response contains non-human users" should {
-        "filter out any non-human users" in new Setup {
-          stubFor(
-            WireMock.get(urlEqualTo("/v2/organisations/users"))
-              .willReturn(
-                aResponse()
-                  .withStatus(200)
-                  .withBodyFile("non-human-users.json")
-              )
-          )
-
-          val res = userManagementConnector.getAllUsers().futureValue
-
-          res.length shouldBe 2
-          res should contain theSameElementsAs Seq(
+        res should contain theSameElementsAs Seq(
             User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String]),
             User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String])
           )
-        }
       }
     }
+
+    "parsing an invalid JSON response" should {
+      "throw a JSValidationException" in new Setup {
+        stubFor(
+          WireMock.get(urlEqualTo("/v2/organisations/users"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("invalid-users.json")
+            )
+        )
+
+        val res = userManagementConnector.getAllUsers().failed.futureValue
+        res shouldBe a [JsValidationException]
+      }
+    }
+
+    "it receives a non 200 status code response" should {
+      "return an UpstreamErrorResponse" in new Setup {
+        stubFor(
+          WireMock.get(urlEqualTo("/v2/organisations/users"))
+            .willReturn(
+              aResponse()
+                .withStatus(500)
+            )
+        )
+
+        val res = userManagementConnector.getAllUsers().failed.futureValue
+        res shouldBe a [UpstreamErrorResponse]
+      }
+    }
+
+    "the response contains non-human users" should {
+      "filter out any non-human users" in new Setup {
+        stubFor(
+          WireMock.get(urlEqualTo("/v2/organisations/users"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("non-human-users.json")
+            )
+        )
+
+        val res = userManagementConnector.getAllUsers().futureValue
+
+        res.length shouldBe 2
+        res should contain theSameElementsAs Seq(
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String]),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String])
+        )
+      }
+    }
+  }
 
   "getAllTeams" when {
     "parsing a valid response" should {
@@ -160,7 +154,6 @@ class UmpConnectorSpec
         )
       }
     }
-
 
     "parsing an invalid JSON response" should {
       "throw a JSValidationException" in new Setup {
@@ -209,14 +202,16 @@ class UmpConnectorSpec
         val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
 
         res shouldBe Some(Team(
-          members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"), Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "user")),
-          teamName = "PlatOps",
-          description = None,
-          documentation = None,
-          slack = Some("https://slack.com"),
+          members           = Seq(
+                                Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"),
+                                Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "user")
+                              ),
+          teamName          = "PlatOps",
+          description       = None,
+          documentation     = None,
+          slack             = Some("https://slack.com"),
           slackNotification = None
         ))
-
       }
     }
 
@@ -295,17 +290,19 @@ class UmpConnectorSpec
         val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
 
         res shouldBe Some(Team(
-          members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"), Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "user")),
-          teamName = "PlatOps",
-          description = None,
-          documentation = None,
-          slack = Some("https://slack.com"),
+          members           = Seq(
+                                Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"),
+                                Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "user")
+                              ),
+          teamName          = "PlatOps",
+          description       = None,
+          documentation     = None,
+          slack             = Some("https://slack.com"),
           slackNotification = None
         ))
       }
     }
   }
-
 }
 
 trait Setup {

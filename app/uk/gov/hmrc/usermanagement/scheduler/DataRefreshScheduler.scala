@@ -63,5 +63,4 @@ class DataRefreshScheduler @Inject()(
       }
       .map(_.getOrElse(logger.info(s"The Reload process is locked for ${dataRefreshLock.lockId}")))
   }
-
 }

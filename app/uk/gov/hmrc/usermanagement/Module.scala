@@ -17,13 +17,11 @@
 package uk.gov.hmrc.usermanagement
 
 import com.google.inject.AbstractModule
-import uk.gov.hmrc.usermanagement.config.AppConfig
 import uk.gov.hmrc.usermanagement.scheduler.DataRefreshScheduler
 
 class Module extends AbstractModule {
 
   override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
     bind(classOf[DataRefreshScheduler]).asEagerSingleton()
   }
 }

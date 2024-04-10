@@ -16,10 +16,9 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model.{Collation, CollationStrength, Filters, IndexModel, IndexOptions, Indexes}
+import org.mongodb.scala.model.{Collation, CollationStrength, Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions, DeleteManyModel, DeleteOptions}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import uk.gov.hmrc.mongo.transaction.{TransactionConfiguration, Transactions}
 import uk.gov.hmrc.usermanagement.model.Team
 import org.mongodb.scala.model.Filters.{equal, or}
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository.caseInsensitiveCollation
@@ -29,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class TeamsRepository @Inject()(
- override val mongoComponent: MongoComponent,
+ mongoComponent: MongoComponent,
 )(implicit
  ec            : ExecutionContext
 ) extends PlayMongoRepository[Team](
@@ -37,22 +36,37 @@ class TeamsRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = Team.format,
   indexes        = Seq(
-    IndexModel(Indexes.ascending("teamName"), IndexOptions().unique(true).background(true).collation(caseInsensitiveCollation)),
-  )
-) with Transactions {
-  // No ttl required for this collection - gets updated on a scheduler every 20 minutes, and stale data will be deleted
-  // during scheduler run
+                     IndexModel(Indexes.ascending("teamName"), IndexOptions().unique(true).background(true).collation(caseInsensitiveCollation)),
+                   )
+){
+  // No ttl required for this collection - putAll cleans out stale data
   override lazy val requiresTtlIndex = false
 
-  private implicit val tc: TransactionConfiguration = TransactionConfiguration.strict
-
   def putAll(teams: Seq[Team]): Future[Unit] =
-    withSessionAndTransaction (session =>
-      for {
-        _  <- collection.deleteMany(session, Filters.empty()).toFuture()
-        _  <- collection.insertMany(session, teams).toFuture().map(_ => ())
-      } yield ()
-    )
+    for {
+      old         <- collection.find().toFuture()
+      bulkUpdates =  //upsert any that were not present already
+                     teams
+                       .filterNot(old.contains)
+                       .map(entry =>
+                         ReplaceOneModel(
+                           Filters.equal("teamName", entry.teamName),
+                           entry,
+                           ReplaceOptions().upsert(true).collation(caseInsensitiveCollation)
+                         )
+                       ) ++
+                     // delete any that are no longer present
+                       old.filterNot(t => teams.exists(_.teamName == t.teamName))
+                         .map(entry =>
+                           DeleteManyModel(
+                             Filters.equal("teamName", entry.teamName),
+                             DeleteOptions().collation(caseInsensitiveCollation)
+                           )
+                         )
+       _          <- if (bulkUpdates.isEmpty) Future.unit
+                     else collection.bulkWrite(bulkUpdates).toFuture().map(_=> ())
+    } yield ()
+
 
   def findAll(): Future[Seq[Team]] =
     collection
@@ -60,12 +74,15 @@ class TeamsRepository @Inject()(
       .toFuture()
 
   def findByTeamName(teamName: String): Future[Option[Team]] = {
-    collection.
-     find(or(equal("teamName", teamName),
-            equal("teamName", teamName.replace("-", " "))))
+    collection
+      .find(
+        or(
+          equal("teamName", teamName),
+          equal("teamName", teamName.replace("-", " "))
+        )
+      )
       .collation(caseInsensitiveCollation)
       .headOption()
-
   }
 }
 
@@ -76,4 +93,3 @@ object TeamsRepository {
       .collationStrength(CollationStrength.SECONDARY)
       .build
 }
-

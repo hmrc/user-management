@@ -16,11 +16,9 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model.Filters.{and, equal, exists, notEqual}
-import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes}
+import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions, DeleteOneModel}
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import uk.gov.hmrc.mongo.transaction.{TransactionConfiguration, Transactions}
 import uk.gov.hmrc.usermanagement.model.User
 
 import javax.inject.{Inject, Singleton}
@@ -28,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class UsersRepository @Inject()(
- override val mongoComponent: MongoComponent,
+ mongoComponent: MongoComponent,
 )(implicit
  ec            : ExecutionContext
 ) extends PlayMongoRepository(
@@ -36,42 +34,51 @@ class UsersRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = User.format,
   indexes        = Seq(
-    IndexModel(Indexes.ascending("username"),      IndexOptions().unique(true).background(true)),
-    IndexModel(Indexes.ascending("githubUsername"),IndexOptions().unique(false).background(true))
-  )
-) with Transactions {
+                     IndexModel(Indexes.ascending("username"),      IndexOptions().unique(true).background(true)),
+                     IndexModel(Indexes.ascending("githubUsername"),IndexOptions().unique(false).background(true))
+                   )
+) {
 
-  // No ttl required for this collection - gets updated on a scheduler every 20 minutes, and stale data will be deleted
-  // during scheduler run
+  // No ttl required for this collection - putAll cleans out stale data
   override lazy val requiresTtlIndex = false
 
-  private implicit val tc: TransactionConfiguration = TransactionConfiguration.strict
-
   def putAll(users: Seq[User]): Future[Unit] =
-    withSessionAndTransaction (session =>
-      for {
-        _  <- collection.deleteMany(session, Filters.empty()).toFuture()
-        _  <- collection.insertMany(session, users).toFuture().map(_ => ())
-      } yield ()
-    )
+    for {
+      old         <- collection.find().toFuture()
+      bulkUpdates =  //upsert any that were not present already
+                     users
+                       .filterNot(old.contains)
+                       .map(entry =>
+                         ReplaceOneModel(
+                           Filters.equal("username", entry.username),
+                           entry,
+                           ReplaceOptions().upsert(true)
+                         )
+                       ) ++
+                     // delete any that are no longer present
+                       old.filterNot(u => users.exists(_.username == u.username))
+                         .map(entry =>
+                           DeleteOneModel(
+                             Filters.equal("username", entry.username)
+                           )
+                         )
+       _          <- if (bulkUpdates.isEmpty) Future.unit
+                     else collection.bulkWrite(bulkUpdates).toFuture().map(_=> ())
+    } yield ()
 
   def find(
     team  : Option[String] = None,
     github: Option[String] = None
-  ): Future[Seq[User]] = {
-
-    val filters = Seq(
-      Some(and(exists("teamNames"), notEqual("teamNames", Seq.empty))),
-      team.map(teamName => equal("teamNames", teamName)),
-      github.map(username => equal("githubUsername", username))
-    ).flatten
-    
-    collection.find(Filters.and(filters: _*)).toFuture()
-  }
+  ): Future[Seq[User]] =
+    collection.find(
+      Filters.and(
+        team.fold(Filters.and(Filters.exists("teamNames"), Filters.notEqual("teamNames", Seq.empty)))(teamName => Filters.equal("teamNames", teamName)),
+        github.fold(Filters.empty())(username => Filters.equal("githubUsername", username))
+      )
+    ).toFuture()
 
   def findByUsername(username: String): Future[Option[User]] =
     collection
-      .find(equal("username", username))
+      .find(Filters.equal("username", username))
       .headOption()
 }
-

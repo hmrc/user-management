@@ -80,13 +80,12 @@ class UserRepositorySpec
       )
 
       repository.putAll(latestUsers).futureValue
-      
+
       val res = repository.find().futureValue
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
     }
-
   }
 
   "UsersRepository.find" should {
@@ -103,7 +102,7 @@ class UserRepositorySpec
         role           = "team-admin",
         teamNames      = Seq("team1","team2")
         )
-      
+
 
       val userTwo = User(
         displayName    = Some("John Smith"),
@@ -143,7 +142,6 @@ class UserRepositorySpec
 
 
     "find all users that are a member of given team name" in {
-
       val userOne = User(
         displayName    = Some("Joe Bloggs"),
         familyName     = "Bloggs",
@@ -232,7 +230,6 @@ class UserRepositorySpec
   }
 
   "UsersRepository.findByUsername" should {
-
     val userOne = User(
       displayName    = Some("Joe Bloggs"),
       familyName     = "Bloggs",
