@@ -155,6 +155,7 @@ object UmpConnector {
     ~ ( __ \ "givenName"    ).readNullable[String]
     ~ ( __ \ "organisation" ).readNullable[String]
     ~ ( __ \ "primaryEmail" ).read[String]
+    ~ ( __ \ "slackID"      ).readNullable[String]
     ~ ( __ \ "username"     ).read[String]
     ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
     ~ ( __ \ "phoneNumber"  ).readNullable[String]

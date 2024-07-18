@@ -25,6 +25,7 @@ case class User(
   givenName     : Option[String],
   organisation  : Option[String],
   primaryEmail  : String,
+  slackId       : Option[String],
   username      : String,
   githubUsername: Option[String],
   phoneNumber   : Option[String],
@@ -39,6 +40,7 @@ object User {
     ~ ( __ \ "givenName"     ).formatNullable[String]
     ~ ( __ \ "organisation"  ).formatNullable[String]
     ~ ( __ \ "primaryEmail"  ).format[String]
+    ~ ( __ \ "slackId"       ).formatNullable[String]
     ~ ( __ \ "username"      ).format[String]
     ~ ( __ \ "githubUsername").formatNullable[String]
     ~ ( __ \ "phoneNumber"   ).formatNullable[String]

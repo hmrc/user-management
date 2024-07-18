@@ -21,8 +21,8 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
-import uk.gov.hmrc.usermanagement.connectors.UmpConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
+import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
+import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -33,16 +33,19 @@ class DataRefreshService @Inject()(
   umpConnector   : UmpConnector,
   usersRepository: UsersRepository,
   teamsRepository: TeamsRepository,
-  config         : SchedulerConfig
-) extends Logging {
+  config         : SchedulerConfig,
+  slackConnector : SlackConnector
+)(implicit ec: ExecutionContext) extends Logging {
 
   def updateUsersAndTeams()(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] = {
     for {
       umpUsers             <- umpConnector.getAllUsers()
+      slackUsers           <- slackConnector.getAllSlackUsers()
+      usersWithSlack       =  addSlackIDsToUsers(umpUsers, slackUsers)
       umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
       _                    =  logger.info("Successfully retrieved the latest users and teams data from UMP")
       teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
-      usersWithMemberships =  addMembershipsToUsers(umpUsers, teamsWithMembers)
+      usersWithMemberships =  addMembershipsToUsers(usersWithSlack, teamsWithMembers)
       _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
                                 s"human users into their respective repositories")
       _                    <- usersRepository.putAll(usersWithMemberships)
@@ -51,6 +54,12 @@ class DataRefreshService @Inject()(
       _                    =  logger.info("Successfully refreshed teams data from UMP.")
     } yield ()
   }
+
+  private def addSlackIDsToUsers(umpUsers: Seq[User], slackUsers: Seq[SlackUser]): Seq[User] =
+    umpUsers.map { umpUser =>
+      val slackUser = slackUsers.find(_.email.exists(_ == umpUser.primaryEmail))
+      umpUser.copy(slackId = slackUser.map(_.id))
+    }
 
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.

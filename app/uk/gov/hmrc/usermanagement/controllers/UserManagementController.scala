@@ -20,6 +20,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.usermanagement.connectors.SlackConnector
 import uk.gov.hmrc.usermanagement.model.{Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
@@ -30,7 +31,8 @@ import scala.concurrent.ExecutionContext
 class UserManagementController @Inject()(
   cc             : ControllerComponents,
   usersRepository: UsersRepository,
-  teamsRepository: TeamsRepository
+  teamsRepository: TeamsRepository,
+  slackConnector: SlackConnector
 )(implicit ec: ExecutionContext
 ) extends BackendController(cc) with Logging
 {

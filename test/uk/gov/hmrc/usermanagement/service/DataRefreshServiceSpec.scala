@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.usermanagement.service
 
-import org.apache.pekko.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
+import org.apache.pekko.actor.ActorSystem
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar.{mock, when}
 import org.mockito.scalatest.MockitoSugar
@@ -27,8 +27,8 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
-import uk.gov.hmrc.usermanagement.connectors.UmpConnector
-import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
+import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
+import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -49,8 +49,8 @@ class DataRefreshServiceSpec
     "update the Users and Teams repositories based on the data received from UMP" in new Setup {
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]), //role defaulted to "user" should get updated to admin when refreshed
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]), //role defaulted to "user" should get updated to admin when refreshed
         )))
 
       when(umpConnector.getAllTeams())
@@ -79,11 +79,14 @@ class DataRefreshServiceSpec
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
 
+      when(slackConnector.getAllSlackUsers())
+        .thenReturn(Future.successful(Seq(SlackUser(email= Some("jane.doe@gmail.com"), id= "ABCD"))))
+
       service.updateUsersAndTeams().futureValue
 
       verify(usersRepository).putAll(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq("team1")),
-        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2")),
+        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq("team1")),
+        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", slackId = Some("ABCD"), username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2")),
       ))
 
       verify(teamsRepository).putAll(Seq(
@@ -96,8 +99,8 @@ class DataRefreshServiceSpec
     "Handle users existing in more than one team" in new Setup {
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq.empty[String]),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
+          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq.empty[String]),
         )))
 
       when(umpConnector.getAllTeams())
@@ -126,6 +129,9 @@ class DataRefreshServiceSpec
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
 
+      when(slackConnector.getAllSlackUsers())
+        .thenReturn(Future.successful(Seq.empty[SlackUser]))
+
       service.updateUsersAndTeams().futureValue
 
       verify(usersRepository).putAll(Seq(
@@ -135,6 +141,7 @@ class DataRefreshServiceSpec
           givenName      = Some("Joe"),
           organisation   = Some("MDTP"),
           primaryEmail   = "joe.bloggs@gmail.com",
+          slackId        = None,
           username       = "joe.bloggs",
           githubUsername = None,
           phoneNumber    = None,
@@ -147,6 +154,7 @@ class DataRefreshServiceSpec
           givenName      = Some("Jane"),
           organisation   = Some("MDTP"),
           primaryEmail   = "jane.doe@gmail.com",
+          slackId        = None,
           username       = "jane.doe",
           githubUsername = None,
           phoneNumber    = None,
@@ -168,9 +176,10 @@ trait Setup {
   val umpConnector    = mock[UmpConnector]
   val usersRepository = mock[UsersRepository]
   val teamsRepository = mock[TeamsRepository]
+  val slackConnector  = mock[SlackConnector]
   val schedulerConfig = new SchedulerConfig(Configuration(ConfigFactory.load("application.conf")))
 
-  val service = new DataRefreshService(umpConnector, usersRepository, teamsRepository, schedulerConfig)
+  val service = new DataRefreshService(umpConnector, usersRepository, teamsRepository, schedulerConfig, slackConnector)
 
   when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
