@@ -40,11 +40,14 @@ class DataRefreshService @Inject()(
   def updateUsersAndTeams()(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] = {
     for {
       umpUsers             <- umpConnector.getAllUsers()
+      _                    =  logger.info("Successfully retrieved users from UMP")
       slackUsers           <- slackConnector.getAllSlackUsers()
+      _                    =  logger.info("Successfully retrieved users from Slack")
       usersWithSlack       =  addSlackIDsToUsers(umpUsers, slackUsers)
       umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
-      _                    =  logger.info("Successfully retrieved the latest users and teams data from UMP")
+      _                    =  logger.info("Successfully retrieved team names from UMP")
       teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
+      _                    =  logger.info("Successfully retrieved all teams with members from UMP")
       usersWithMemberships =  addMembershipsToUsers(usersWithSlack, teamsWithMembers)
       _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
                                 s"human users into their respective repositories")
