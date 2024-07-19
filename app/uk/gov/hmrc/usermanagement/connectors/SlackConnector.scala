@@ -48,6 +48,7 @@ class SlackConnector @Inject()(
     httpClientV2
       .get(url"$apiUrl/users.list?limit=$limit&cursor=$cursor")
       .setHeader("Authorization" -> s"Bearer $token")
+      .withProxy
       .execute[SlackUserListPage]
   }
 
