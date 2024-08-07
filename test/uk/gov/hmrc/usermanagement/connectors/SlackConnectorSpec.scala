@@ -32,16 +32,17 @@ class SlackConnectorSpec
     with ScalaFutures
     with IntegrationPatience
     with WireMockSupport
-    with HttpClientV2Support {
+    with HttpClientV2Support:
 
-  implicit val hc: HeaderCarrier = new HeaderCarrier()
+  private given HeaderCarrier = new HeaderCarrier()
 
   private val config = ConfigFactory.parseString(
     s"""
-       |slack.apiUrl = "${wireMockUrl}"
+       |slack.apiUrl = "$wireMockUrl"
        |slack.token  = token
        |slack.limit  = 2
-       |""".stripMargin)
+       |""".stripMargin
+  )
 
   private val connector: SlackConnector =
     new SlackConnector(
@@ -49,9 +50,8 @@ class SlackConnectorSpec
       new Configuration(config)
     )
 
-  "getAllSlackIDs" should {
-    "correctly read in pages and combine them" in {
-
+  "getAllSlackIDs" should:
+    "correctly read in pages and combine them" in:
       stubFor(
         get(urlEqualTo(s"/users.list?limit=2&cursor="))
           .willReturn(
@@ -110,7 +110,5 @@ class SlackConnectorSpec
         SlackUser(email = Some("B@gmail.com"), id = "id_B"),
         SlackUser(email = Some("C@gmail.com"), id = "id_C"),
       )
-    }
-  }
-}
+end SlackConnectorSpec
 

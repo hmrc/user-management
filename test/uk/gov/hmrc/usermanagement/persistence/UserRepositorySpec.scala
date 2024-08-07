@@ -19,7 +19,8 @@ package uk.gov.hmrc.usermanagement.persistence
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
-import uk.gov.hmrc.usermanagement.model.{User}
+import uk.gov.hmrc.usermanagement.model.User
+import org.mongodb.scala.ObservableFuture
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -27,16 +28,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class UserRepositorySpec
   extends AnyWordSpec
     with Matchers
-    with DefaultPlayMongoRepositorySupport[User] {
+    with DefaultPlayMongoRepositorySupport[User]:
 
-  override lazy val repository = new UsersRepository(mongoComponent)
+  override val repository: UsersRepository =  UsersRepository(mongoComponent)
 
   override protected val checkIndexedQueries: Boolean =
   // we run unindexed queries
     false
 
-  "UsersRepository.putAll" should {
-    "delete the existing users, and insert new users into the collection" in {
+  "UsersRepository.putAll" should:
+    "delete the existing users, and insert new users into the collection" in:
       repository.collection.insertOne(
         User(
           displayName    = Some("Old User"),
@@ -88,11 +89,9 @@ class UserRepositorySpec
       res.length shouldBe 2
 
       res should contain theSameElementsAs latestUsers
-    }
-  }
 
-  "UsersRepository.find" should {
-    "only find users in teams" in {
+  "UsersRepository.find" should:
+    "only find users in teams" in:
       val userOne = User(
         displayName    = Some("Joe Bloggs"),
         familyName     = "Bloggs",
@@ -106,8 +105,7 @@ class UserRepositorySpec
         role           = "team-admin",
         teamNames      = Seq("team1","team2")
         )
-
-
+      
       val userTwo = User(
         displayName    = Some("John Smith"),
         familyName     = "Smith",
@@ -144,10 +142,8 @@ class UserRepositorySpec
 
       res.length shouldBe 1
       res should contain theSameElementsAs Seq(userOne)
-    }
 
-
-    "find all users that are a member of given team name" in {
+    "find all users that are a member of given team name" in:
       val userOne = User(
         displayName    = Some("Joe Bloggs"),
         familyName     = "Bloggs",
@@ -198,9 +194,8 @@ class UserRepositorySpec
 
       res.length shouldBe 2
       res should contain theSameElementsAs Seq(userTwo, userThree)
-    }
 
-    "find a user by github username" in {
+    "find a user by github username" in:
       val userOne = User(
         displayName    = Some("Joe Bloggs"),
         familyName     = "Bloggs",
@@ -237,10 +232,8 @@ class UserRepositorySpec
 
       res.length shouldBe 2
       res should contain theSameElementsAs Seq(userOne, userOne.copy(username = "joe.bloggs1"))
-    }
-  }
 
-  "UsersRepository.findByUsername" should {
+  "UsersRepository.findByUsername" should:
     val userOne = User(
       displayName    = Some("Joe Bloggs"),
       familyName     = "Bloggs",
@@ -269,16 +262,13 @@ class UserRepositorySpec
       teamNames      = Seq("team2")
     )
 
-    "return user information for a given username" in {
+    "return user information for a given username" in:
       repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
-
+      
       repository.findByUsername("joe.bloggs").futureValue shouldBe Some(userOne)
-    }
 
-    "return None when username is not found" in {
+    "return None when username is not found" in:
       repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
 
       repository.findByUsername("jane.doe").futureValue shouldBe None
-    }
-  }
-}
+end UserRepositorySpec

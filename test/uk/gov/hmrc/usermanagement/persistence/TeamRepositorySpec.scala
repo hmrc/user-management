@@ -24,16 +24,15 @@ import uk.gov.hmrc.usermanagement.model.{Member, Team}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
 class TeamRepositorySpec
   extends AnyWordSpec
     with Matchers
-    with DefaultPlayMongoRepositorySupport[Team] {
+    with DefaultPlayMongoRepositorySupport[Team]:
 
-  override lazy val repository = new TeamsRepository(mongoComponent)
+  override val repository: TeamsRepository = TeamsRepository(mongoComponent)
 
-  "TeamsRepository.putAll" should {
-    "delete the existing teams, and insert new teams into the collection" in new Setup(repository){
+  "TeamsRepository.putAll" should:
+    "delete the existing teams, and insert new teams into the collection" in new Setup(repository):
 
       val latestTeams: Seq[Team] = Seq(
         Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
@@ -44,48 +43,73 @@ class TeamRepositorySpec
 
       repository.putAll(latestTeams).futureValue
 
-      val res = repository.findAll().futureValue
-      res.length shouldBe 2
+      val res: Seq[Team] = repository.findAll().futureValue
 
-      res should contain theSameElementsAs latestTeams
-    }
-  }
-  
-  "TeamsRepository.findByTeamName" should {
-    "if real name contains a dash" in new Setup(repository){
+      res.length shouldBe 2
+      res        should contain theSameElementsAs latestTeams
+
+  "TeamsRepository.findByTeamName" should:
+    "if real name contains a dash" in new Setup(repository):
       val res: Option[Team] = repository.findByTeamName("PlatOps - Support Team").futureValue
       res shouldBe Some(teamWithDashInTeamName)
-    }
-    "if the search term contains a dash but the real name does not" in new Setup(repository) {
+
+    "if the search term contains a dash but the real name does not" in new Setup(repository):
       val res: Option[Team] = repository.findByTeamName("DDC-Service").futureValue
       res shouldBe Some(teamNameMadeFromGithubName)
-    }
-    "if the search term contains a dash and the team does not exist" in new Setup(repository) {
+
+    "if the search term contains a dash and the team does not exist" in new Setup(repository):
       val res: Option[Team] = repository.findByTeamName("Another-Service").futureValue
       res shouldBe None
-    }
-    "be case insensitive to searches" in new Setup(repository) {
+
+    "be case insensitive to searches" in new Setup(repository):
       val res: Option[Team] = repository.findByTeamName("TEAM2").futureValue
       res shouldBe Some(team2)
-    }
-  }
-}
+end TeamRepositorySpec
 
-class Setup(repository: TeamsRepository) {
+class Setup(repository: TeamsRepository):
+  
+  import org.mongodb.scala.ObservableFuture
 
-  val teamWithDashInTeamName: Team = Team(members = Seq.empty, teamName = "PlatOps - Support Team", description = Some("Example with a dash in the name"), documentation = None, slack = None, slackNotification = None)
-  val teamNameMadeFromGithubName : Team = Team(members = Seq.empty, teamName = "ddc service", description = Some("Example with a dash in the name"), documentation = None, slack = None, slackNotification = None)
-  val team2: Team = Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None)
+  val teamWithDashInTeamName: Team = 
+    Team(
+      members           = Seq.empty, 
+      teamName          = "PlatOps - Support Team", 
+      description       = Some("Example with a dash in the name"), 
+      documentation     = None, 
+      slack             = None, 
+      slackNotification = None
+    )
+    
+  val teamNameMadeFromGithubName: Team = 
+    Team(
+      members           = Seq.empty, 
+      teamName          = "ddc service", 
+      description       = Some("Example with a dash in the name"), 
+      documentation     = None, 
+      slack             = None, 
+      slackNotification = None
+    )
+  val team2: Team = 
+    Team(
+      members           = Seq.empty, 
+      teamName          = "team2", 
+      description       = None, 
+      documentation     = None, 
+      slack             = None, 
+      slackNotification = None
+    )
 
   repository.collection.insertMany(Seq(
-    Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
+    Team(
+      members           = Seq.empty, 
+      teamName          = "team1", 
+      description       = None, 
+      documentation     = None, 
+      slack             = None, 
+      slackNotification = None
+    ),
     team2,
     teamWithDashInTeamName,
     teamNameMadeFromGithubName
   )).toFuture().futureValue
-
-
-
-
-}
-
+end Setup

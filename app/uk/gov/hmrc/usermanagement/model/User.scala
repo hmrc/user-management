@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.usermanagement.model
 
-import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{OFormat, __}
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
 
 case class User(
   displayName   : Option[String],
@@ -33,8 +33,8 @@ case class User(
   teamNames     : Seq[String]
 )
 
-object User {
-  val format: OFormat[User] = {
+object User:
+  val format: OFormat[User] =
     ( ( __ \ "displayName"   ).formatNullable[String]
     ~ ( __ \ "familyName"    ).format[String]
     ~ ( __ \ "givenName"     ).formatNullable[String]
@@ -46,6 +46,4 @@ object User {
     ~ ( __ \ "phoneNumber"   ).formatNullable[String]
     ~ ( __ \ "role"          ).format[String]
     ~ ( __ \ "teamNames"     ).format[Seq[String]]
-    )(User.apply, unlift(User.unapply))
-  }
-}
+    )(User.apply, pt => Tuple.fromProductTyped(pt))

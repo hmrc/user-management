@@ -17,10 +17,9 @@
 package uk.gov.hmrc.usermanagement.controllers
 
 import play.api.Logging
-import play.api.libs.json.Json
+import play.api.libs.json.{Format, Json}
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
-import uk.gov.hmrc.usermanagement.connectors.SlackConnector
 import uk.gov.hmrc.usermanagement.model.{Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
@@ -31,30 +30,31 @@ import scala.concurrent.ExecutionContext
 class UserManagementController @Inject()(
   cc             : ControllerComponents,
   usersRepository: UsersRepository,
-  teamsRepository: TeamsRepository,
-  slackConnector: SlackConnector
-)(implicit ec: ExecutionContext
-) extends BackendController(cc) with Logging
-{
-  def getUsers(team: Option[String], github: Option[String]): Action[AnyContent] = Action.async {
-    implicit val uf = User.format
-    usersRepository.find(team, github).map(res => Ok(Json.toJson(res.sortBy(_.username))))
-  }
+  teamsRepository: TeamsRepository
+)(using
+  ec             : ExecutionContext
+) extends BackendController(cc) with Logging:
 
-  val getAllTeams: Action[AnyContent] = Action.async {
-    implicit val uf = Team.format
-    teamsRepository.findAll().map(res => Ok(Json.toJson(res.sortBy(_.teamName))))
-  }
+  private given Format[User] = User.format
+  private given Format[Team] = Team.format
 
-  def getUserByUsername(username: String): Action[AnyContent] = Action.async {
-    implicit val uf = User.format
+  def getUsers(team: Option[String], github: Option[String]): Action[AnyContent] = Action.async:
+    usersRepository.find(team, github)
+      .map: res =>
+        Ok(Json.toJson(res.sortBy(_.username)))
+
+  val getAllTeams: Action[AnyContent] = Action.async:
+    teamsRepository.findAll()
+      .map: res =>
+        Ok(Json.toJson(res.sortBy(_.teamName)))
+
+  def getUserByUsername(username: String): Action[AnyContent] = Action.async:
     usersRepository.findByUsername(username)
-      .map(_.fold(NotFound: Result)(res => Ok(Json.toJson(res))))
-  }
+      .map:
+        _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
 
-  def getTeamByTeamName(teamName: String): Action[AnyContent] = Action.async {
-    implicit val uf = Team.format
+  def getTeamByTeamName(teamName: String): Action[AnyContent] = Action.async:
     teamsRepository.findByTeamName(teamName)
-      .map(_.fold(NotFound: Result)(res => Ok(Json.toJson(res))))
-  }
-}
+      .map:
+        _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
+end UserManagementController

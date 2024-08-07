@@ -17,30 +17,39 @@
 package uk.gov.hmrc.usermanagement.testonly
 
 import play.api.libs.json.{JsError, OFormat, Reads}
-import play.api.mvc.{Action, AnyContent, BodyParser, ControllerComponents}
+import play.api.mvc.{Action, AnyContent, BodyParser, ControllerComponents, Request}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.usermanagement.model.Team
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository
 import org.mongodb.scala.bson.Document
+import org.mongodb.scala.ObservableFuture
 
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
 
 class IntegrationTestSupportController @Inject()(
   teamsRepository: TeamsRepository,
-  cc             : ControllerComponents)(implicit
-  ec             : ExecutionContext) extends BackendController(cc) {
+  cc             : ControllerComponents
+)(using
+  ec             : ExecutionContext
+) extends BackendController(cc):
 
   private def validateJson[A: Reads]: BodyParser[A] =
-    parse.json.validate(_.validate[A].asEither.left.map(e => BadRequest(JsError.toJson(e))))
+    parse.json.validate(
+      _.validate[A].asEither.left
+      .map: e =>
+        BadRequest(JsError.toJson(e))
+    )
 
-  implicit val tf: OFormat[Team] = Team.format
-  def addTeams(): Action[Seq[Team]] = Action.async(validateJson[Seq[Team]]) { implicit request =>
-    teamsRepository.putAll(request.body).map(_ => Ok("Ok"))
-  }
+  private given OFormat[Team] = Team.format
 
-  def deleteTeams(): Action[AnyContent] = Action.async {
-    teamsRepository.collection.deleteMany(Document()).toFuture().map(_ => Ok("Ok"))
-  }
+  def addTeams(): Action[Seq[Team]] = Action.async(validateJson[Seq[Team]]): request =>
+    teamsRepository.putAll(request.body)
+      .map:_ =>
+        Ok("Ok")
 
-}
+  def deleteTeams(): Action[AnyContent] = Action.async:
+    teamsRepository.collection.deleteMany(Document())
+      .toFuture().map: _ =>
+        Ok("Ok")
+end IntegrationTestSupportController

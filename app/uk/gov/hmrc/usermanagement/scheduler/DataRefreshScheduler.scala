@@ -29,15 +29,15 @@ import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
 class DataRefreshScheduler @Inject()(
-  dataRefreshService : DataRefreshService,
-  config             : SchedulerConfig,
-  mongoLockRepository: MongoLockRepository,
-  timestampSupport   : TimestampSupport
-)(implicit
+  dataRefreshService  : DataRefreshService,
+  config              : SchedulerConfig,
+  mongoLockRepository : MongoLockRepository,
+  timestampSupport    : TimestampSupport
+)(using
   actorSystem         : ActorSystem,
   applicationLifecycle: ApplicationLifecycle,
   ec                  : ExecutionContext
-) extends SchedulerUtils with Logging {
+) extends SchedulerUtils with Logging:
 
   private val dataRefreshLock: ScheduledLockService =
     ScheduledLockService(
@@ -47,20 +47,18 @@ class DataRefreshScheduler @Inject()(
       schedulerInterval = config.interval
     )
 
-  scheduleWithLock("User Management Data Refresh", config, dataRefreshLock) {
-    implicit val hc: HeaderCarrier = HeaderCarrier()
-    for {
+  scheduleWithLock("User Management Data Refresh", config, dataRefreshLock):
+    given HeaderCarrier = HeaderCarrier()
+    for 
       _ <- Future.successful(logger.info("Beginning user management data refresh"))
       _ <- dataRefreshService.updateUsersAndTeams()
-    } yield ()
-  }
+    yield ()
 
-  def manualReload()(implicit hc: HeaderCarrier): Future[Unit] = {
+  def manualReload()(using hc: HeaderCarrier): Future[Unit] =
     dataRefreshLock
-      .withLock {
+      .withLock:
         logger.info("Data refresh has been manually triggered")
         dataRefreshService.updateUsersAndTeams()
-      }
-      .map(_.getOrElse(logger.info(s"The Reload process is locked for ${dataRefreshLock.lockId}")))
-  }
-}
+      .map:
+        _.getOrElse(logger.info(s"The Reload process is locked for ${dataRefreshLock.lockId}"))
+end DataRefreshScheduler

@@ -16,14 +16,13 @@
 
 package uk.gov.hmrc.usermanagement.model
 
-import play.api.libs.functional.syntax._
-import play.api.libs.json._
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
 
 final case class SlackUser(email: Option[String], id: String)
 
-object SlackUser {
+object SlackUser:
   val format: Format[SlackUser] =
     ( (__ \ "profile" \ "email").formatNullable[String]
-    ~ (__ \ "id").format[String]
-    )(SlackUser.apply, unlift(SlackUser.unapply))
-}
+    ~ (__ \ "id"               ).format[String]
+    )(SlackUser.apply, pt => Tuple.fromProductTyped(pt))

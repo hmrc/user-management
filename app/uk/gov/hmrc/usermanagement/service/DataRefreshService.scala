@@ -35,10 +35,12 @@ class DataRefreshService @Inject()(
   teamsRepository: TeamsRepository,
   config         : SchedulerConfig,
   slackConnector : SlackConnector
-)(implicit ec: ExecutionContext) extends Logging {
+)(using
+  ec             : ExecutionContext
+) extends Logging:
 
-  def updateUsersAndTeams()(implicit ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] = {
-    for {
+  def updateUsersAndTeams()(using ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Unit] =
+    for
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info("Successfully retrieved users from UMP")
       slackUsers           <- slackConnector.getAllSlackUsers()
@@ -55,14 +57,12 @@ class DataRefreshService @Inject()(
       _                    =  logger.info("Successfully refreshed users data from UMP.")
       _                    <- teamsRepository.putAll(teamsWithMembers)
       _                    =  logger.info("Successfully refreshed teams data from UMP.")
-    } yield ()
-  }
+    yield ()
 
   private def addSlackIDsToUsers(umpUsers: Seq[User], slackUsers: Seq[SlackUser]): Seq[User] =
-    umpUsers.map { umpUser =>
+    umpUsers.map: umpUser =>
       val slackUser = slackUsers.find(_.email.exists(_ == umpUser.primaryEmail))
       umpUser.copy(slackId = slackUser.map(_.id))
-    }
 
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
@@ -83,4 +83,4 @@ class DataRefreshService @Inject()(
       )
     }
   }
-}
+end DataRefreshService
