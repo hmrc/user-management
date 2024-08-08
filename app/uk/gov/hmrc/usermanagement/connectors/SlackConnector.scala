@@ -32,9 +32,8 @@ class SlackConnector @Inject()(
   httpClientV2 : HttpClientV2,
   configuration: Configuration
 )(using
-  ec           : ExecutionContext
+  ExecutionContext
 ):
-
   private lazy val apiUrl: String =
     configuration.get[String]("slack.apiUrl")
 
@@ -56,7 +55,8 @@ class SlackConnector @Inject()(
     def go(cursor: String, accMembers: Seq[SlackUser]): Future[Seq[SlackUser]] =
       getSlackUsersPage(cursor).flatMap: result =>
         val newMembers = accMembers ++ result.members
-        if   (result.nextCursor.isEmpty) Future.successful(newMembers)
+        if   result.nextCursor.isEmpty
+        then Future.successful(newMembers)
         else go(result.nextCursor, newMembers)
     go("", Seq.empty)
 end SlackConnector

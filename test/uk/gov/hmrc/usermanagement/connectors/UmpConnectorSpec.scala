@@ -28,8 +28,6 @@ import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResp
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 class UmpConnectorSpec
   extends AnyWordSpec
      with Matchers

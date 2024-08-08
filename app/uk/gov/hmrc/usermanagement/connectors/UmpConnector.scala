@@ -35,7 +35,7 @@ class UmpConnector @Inject()(
   httpClientV2  : HttpClientV2,
   tokenCache    : AsyncCacheApi
 )(using
-  ec            : ExecutionContext
+  ExecutionContext
 ) extends Logging:
 
   import uk.gov.hmrc.http.HttpReads.Implicits._
@@ -63,7 +63,7 @@ class UmpConnector @Inject()(
       _      = logger.info("logged into UMP")
     yield token
 
-  def getAllUsers()(using hc: HeaderCarrier)(using ec: ExecutionContext): Future[Seq[User]] =
+  def getAllUsers()(using hc: HeaderCarrier): Future[Seq[User]] =
     given Reads[Seq[User]] = readsAtUsers
     for
       token <- getToken()

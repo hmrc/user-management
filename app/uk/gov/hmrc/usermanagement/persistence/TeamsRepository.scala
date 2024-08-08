@@ -31,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class TeamsRepository @Inject()(
  mongoComponent: MongoComponent,
 )(using
- ec            : ExecutionContext
+  ExecutionContext
 ) extends PlayMongoRepository[Team](
   collectionName = "teams",
   mongoComponent = mongoComponent,
@@ -63,7 +63,8 @@ class TeamsRepository @Inject()(
                              Filters.equal("teamName", entry.teamName),
                              DeleteOptions().collation(caseInsensitiveCollation)
                            )
-      _           <- if   (bulkUpdates.isEmpty) Future.unit
+      _           <- if   bulkUpdates.isEmpty
+                     then Future.unit
                      else collection.bulkWrite(bulkUpdates).toFuture().map(_ => ())
     yield ()
 

@@ -17,7 +17,7 @@
 package uk.gov.hmrc.usermanagement.controllers
 
 import play.api.Logging
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Json, Writes}
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.usermanagement.model.{Team, User}
@@ -32,11 +32,11 @@ class UserManagementController @Inject()(
   usersRepository: UsersRepository,
   teamsRepository: TeamsRepository
 )(using
-  ec             : ExecutionContext
+  ExecutionContext
 ) extends BackendController(cc) with Logging:
 
-  private given Format[User] = User.format
-  private given Format[Team] = Team.format
+  private given Writes[User] = User.format
+  private given Writes[Team] = Team.format
 
   def getUsers(team: Option[String], github: Option[String]): Action[AnyContent] = Action.async:
     usersRepository.find(team, github)

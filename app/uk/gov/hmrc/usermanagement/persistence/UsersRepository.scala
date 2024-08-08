@@ -28,8 +28,8 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class UsersRepository @Inject()(
  mongoComponent: MongoComponent,
-)(using 
- ec            : ExecutionContext
+)(using
+  ExecutionContext
 ) extends PlayMongoRepository(
   collectionName = "users",
   mongoComponent = mongoComponent,
