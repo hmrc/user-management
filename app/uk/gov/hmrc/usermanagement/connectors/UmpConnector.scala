@@ -63,7 +63,7 @@ class UmpConnector @Inject()(
       _      = logger.info("logged into UMP")
     yield token
 
-  def getAllUsers()(using hc: HeaderCarrier): Future[Seq[User]] =
+  def getAllUsers()(using HeaderCarrier): Future[Seq[User]] =
     given Reads[Seq[User]] = readsAtUsers
     for
       token <- getToken()
@@ -75,7 +75,7 @@ class UmpConnector @Inject()(
       resp.filterNot: user =>
         nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
 
-  def getAllTeams()(using hc: HeaderCarrier): Future[Seq[Team]] =
+  def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams
     for
       token <- getToken()
@@ -85,7 +85,7 @@ class UmpConnector @Inject()(
                  .execute[Seq[Team]]
     yield resp
 
-  def getTeamWithMembers(teamName: String)(using hc: HeaderCarrier): Future[Option[Team]] =
+  def getTeamWithMembers(teamName: String)(using HeaderCarrier): Future[Option[Team]] =
     given Reads[Team] = umpTeamReads
     for
       token <- getToken()

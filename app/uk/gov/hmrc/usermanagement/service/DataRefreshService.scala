@@ -39,7 +39,7 @@ class DataRefreshService @Inject()(
   ExecutionContext
 ) extends Logging:
 
-  def updateUsersAndTeams()(using materializer: Materializer, hc: HeaderCarrier): Future[Unit] =
+  def updateUsersAndTeams()(using Materializer, HeaderCarrier): Future[Unit] =
     for
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info("Successfully retrieved users from UMP")
@@ -66,7 +66,7 @@ class DataRefreshService @Inject()(
 
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
-  private def getTeamsWithMembers(teams: Seq[String])(using ec: ExecutionContext, materializer: Materializer, hc: HeaderCarrier): Future[Seq[Team]] =
+  private def getTeamsWithMembers(teams: Seq[String])(using Materializer, HeaderCarrier): Future[Seq[Team]] =
     Source(teams)
       .throttle(1, config.requestThrottle)
       .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))

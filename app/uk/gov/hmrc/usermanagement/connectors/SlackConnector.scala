@@ -43,7 +43,7 @@ class SlackConnector @Inject()(
   private lazy val limit: Int =
     configuration.get[Int]("slack.limit")
 
-  private def getSlackUsersPage(cursor: String)(using hc: HeaderCarrier): Future[SlackUserListPage] =
+  private def getSlackUsersPage(cursor: String)(using HeaderCarrier): Future[SlackUserListPage] =
     given Format[SlackUserListPage] = SlackUserListPage.format
     httpClientV2
       .get(url"$apiUrl/users.list?limit=$limit&cursor=$cursor")
@@ -51,7 +51,7 @@ class SlackConnector @Inject()(
       .withProxy
       .execute[SlackUserListPage]
 
-  def getAllSlackUsers()(using hc: HeaderCarrier): Future[Seq[SlackUser]] =
+  def getAllSlackUsers()(using HeaderCarrier): Future[Seq[SlackUser]] =
     def go(cursor: String, accMembers: Seq[SlackUser]): Future[Seq[SlackUser]] =
       getSlackUsersPage(cursor).flatMap: result =>
         val newMembers = accMembers ++ result.members

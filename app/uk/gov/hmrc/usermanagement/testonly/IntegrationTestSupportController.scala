@@ -17,7 +17,7 @@
 package uk.gov.hmrc.usermanagement.testonly
 
 import play.api.libs.json.{JsError, OFormat, Reads}
-import play.api.mvc.{Action, AnyContent, BodyParser, ControllerComponents, Request}
+import play.api.mvc.{Action, AnyContent, BodyParser, ControllerComponents}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.usermanagement.model.Team
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository
@@ -31,7 +31,7 @@ class IntegrationTestSupportController @Inject()(
   teamsRepository: TeamsRepository,
   cc             : ControllerComponents
 )(using
-  ec             : ExecutionContext
+  ExecutionContext
 ) extends BackendController(cc):
 
   private def validateJson[A: Reads]: BodyParser[A] =

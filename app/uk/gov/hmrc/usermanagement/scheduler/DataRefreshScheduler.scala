@@ -54,7 +54,7 @@ class DataRefreshScheduler @Inject()(
       _ <- dataRefreshService.updateUsersAndTeams()
     yield ()
 
-  def manualReload()(using hc: HeaderCarrier): Future[Unit] =
+  def manualReload()(using HeaderCarrier): Future[Unit] =
     dataRefreshLock
       .withLock:
         logger.info("Data refresh has been manually triggered")
