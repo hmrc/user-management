@@ -18,8 +18,9 @@ package uk.gov.hmrc.usermanagement.connectors
 
 import play.api.{Configuration, Logging}
 import play.api.cache.AsyncCacheApi
-import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{Json, OWrites, Reads, __}
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
+import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
@@ -33,7 +34,9 @@ class UmpConnector @Inject()(
   config        : Configuration,
   httpClientV2  : HttpClientV2,
   tokenCache    : AsyncCacheApi
-)(implicit ec: ExecutionContext) extends Logging {
+)(using
+  ExecutionContext
+) extends Logging:
 
   import uk.gov.hmrc.http.HttpReads.Implicits._
 
@@ -48,61 +51,49 @@ class UmpConnector @Inject()(
   private def getToken(): Future[UmpAuthToken] =
     tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
 
-  private def retrieveToken(): Future[UmpAuthToken] = {
-    implicit val lrw: OWrites[UmpLoginRequest] = UmpLoginRequest.writes
-    implicit val atr: Reads[UmpAuthToken]      = UmpAuthToken.reads
-    implicit val hc: HeaderCarrier             = HeaderCarrier()
-    for {
+  private def retrieveToken(): Future[UmpAuthToken] =
+    given OWrites[UmpLoginRequest] = UmpLoginRequest.writes
+    given Reads[UmpAuthToken]      = UmpAuthToken.reads
+    given HeaderCarrier            = HeaderCarrier()
+
+    for
       token <- httpClientV2.post(url"$userManagementLoginUrl")
                  .withBody(Json.toJson(UmpLoginRequest(username, password)))
                  .execute[UmpAuthToken]
       _      = logger.info("logged into UMP")
-    } yield token
-  }
+    yield token
 
-  def getAllUsers()(implicit hc: HeaderCarrier): Future[Seq[User]] = {
-    implicit val ur = {
-      implicit val uf = umpUserReads
-      Reads.at[Seq[User]](__ \ "users")
-    }
-
-    for {
+  def getAllUsers()(using HeaderCarrier): Future[Seq[User]] =
+    given Reads[Seq[User]] = readsAtUsers
+    for
       token <- getToken()
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/users")
                  .setHeader(token.asHeaders():_*)
                  .execute[Seq[User]]
-    } yield
-      resp
-        .filterNot { user =>
-          nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
-        }
-  }
+    yield
+      resp.filterNot: user =>
+        nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
 
-  def getAllTeams()(implicit hc: HeaderCarrier): Future[Seq[Team]] = {
-    implicit val tr = {
-      implicit val tr = umpTeamReads
-      Reads.at[Seq[Team]](__ \ "teams")
-    }
-
-    for {
+  def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
+    given Reads[Seq[Team]] = readsAtTeams
+    for
       token <- getToken()
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/teams")
                  .setHeader(token.asHeaders():_*)
                  .execute[Seq[Team]]
-    } yield resp
-  }
+    yield resp
 
-  def getTeamWithMembers(teamName: String)(implicit hc: HeaderCarrier): Future[Option[Team]] = {
-    implicit val tr = umpTeamReads
-    for {
+  def getTeamWithMembers(teamName: String)(using HeaderCarrier): Future[Option[Team]] =
+    given Reads[Team] = umpTeamReads
+    for
       token <- getToken()
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members")
                  .setHeader(token.asHeaders():_*)
                  .execute[Option[Team]]
-                 .recover {
+                 .recover:
                    case UpstreamErrorResponse.WithStatusCode(422) =>
                      logger.warn(s"Received a 422 response when getting membersForTeam for teamname: $teamName. " +
                        s"This is a known issue that can occur when a team has been created in UMP with invalid characters in its name.")
@@ -111,45 +102,38 @@ class UmpConnector @Inject()(
                      logger.warn(s"Received a 404 response when getting membersForTeam for teamname: $teamName. " +
                        s"This indicates the team does not exist within UMP.")
                      None
-                 }
-    } yield resp.map { team =>
-      team.copy(members = team.members.filterNot { member =>
+    yield resp.map: team =>
+      team.copy(members = team.members.filterNot: member =>
         nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_))
-      })
-    }
-  }
-}
+      )
+end UmpConnector
 
-object UmpConnector {
-
+object UmpConnector:
   val nonHumanIdentifiers: Seq[String] =
     Seq("service", "platops", "build", "deploy", "deskpro", "ddcops", "platsec")
 
-  case class UmpAuthToken(token: String, uid: String) {
+  case class UmpAuthToken(token: String, uid: String):
     def asHeaders(): Seq[(String, String)] =
       Seq( "Token" -> token, "requester" -> uid)
-  }
 
-  object UmpAuthToken {
+  object UmpAuthToken:
     val reads: Reads[UmpAuthToken] =
       ( (__ \ "Token").read[String]
       ~ (__ \ "uid"  ).read[String]
       )(UmpAuthToken.apply _)
-  }
 
   case class UmpLoginRequest(
     username: String,
     password: String
   )
 
-  object UmpLoginRequest {
+  object UmpLoginRequest:
     val writes: OWrites[UmpLoginRequest] =
       ( (__ \ "username").write[String]
       ~ (__ \ "password").write[String]
-      )(unlift(UmpLoginRequest.unapply))
-  }
+      )(pt => Tuple.fromProductTyped(pt))
 
-  val umpUserReads: Reads[User] = {
+  val umpUserReads: Reads[User] =
     ( ( __ \ "displayName"  ).readNullable[String]
     ~ ( __ \ "familyName"   ).read[String]
     ~ ( __ \ "givenName"    ).readNullable[String]
@@ -162,10 +146,13 @@ object UmpConnector {
     ~ ( __ \ "role"         ).readWithDefault[String]("user")
     ~ ( __ \ "teamNames"    ).readWithDefault[Seq[String]](Seq.empty[String])
     )(User.apply _)
-  }
 
-  val umpTeamReads: Reads[Team] = {
-    implicit val tmf = Member.format
+  val readsAtUsers: Reads[Seq[User]] =
+    given Reads[User] = umpUserReads
+    Reads.at[Seq[User]](__ \ "users")
+
+  val umpTeamReads: Reads[Team] =
+    given Format[Member] = Member.format
     ( (__ \ "members"          ).read[Seq[Member]]
     ~ (__ \ "team"             ).read[String]
     ~ (__ \ "description"      ).readNullable[String]
@@ -173,5 +160,8 @@ object UmpConnector {
     ~ (__ \ "slack"            ).readNullable[String]
     ~ (__ \ "slackNotification").readNullable[String]
     )(Team.apply _)
-  }
-}
+
+  val readsAtTeams: Reads[Seq[Team]] =
+    given Reads[Team] = umpTeamReads
+    Reads.at[Seq[Team]](__ \ "teams")
+end UmpConnector

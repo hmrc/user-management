@@ -21,6 +21,7 @@ import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.Team
 import org.mongodb.scala.model.Filters.{equal, or}
+import org.mongodb.scala.ObservableFuture
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository.caseInsensitiveCollation
 
 import javax.inject.{Inject, Singleton}
@@ -29,8 +30,8 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class TeamsRepository @Inject()(
  mongoComponent: MongoComponent,
-)(implicit
- ec            : ExecutionContext
+)(using
+  ExecutionContext
 ) extends PlayMongoRepository[Team](
   collectionName = "teams",
   mongoComponent = mongoComponent,
@@ -38,34 +39,34 @@ class TeamsRepository @Inject()(
   indexes        = Seq(
                      IndexModel(Indexes.ascending("teamName"), IndexOptions().unique(true).background(true).collation(caseInsensitiveCollation)),
                    )
-){
+):
   // No ttl required for this collection - putAll cleans out stale data
   override lazy val requiresTtlIndex = false
 
   def putAll(teams: Seq[Team]): Future[Unit] =
-    for {
+    for
       old         <- collection.find().toFuture()
       bulkUpdates =  //upsert any that were not present already
                      teams
                        .filterNot(old.contains)
-                       .map(entry =>
+                       .map: entry =>
                          ReplaceOneModel(
                            Filters.equal("teamName", entry.teamName),
                            entry,
                            ReplaceOptions().upsert(true).collation(caseInsensitiveCollation)
-                         )
-                       ) ++
+                         ) 
+                       ++
                      // delete any that are no longer present
                        old.filterNot(t => teams.exists(_.teamName == t.teamName))
-                         .map(entry =>
+                         .map: entry =>
                            DeleteManyModel(
                              Filters.equal("teamName", entry.teamName),
                              DeleteOptions().collation(caseInsensitiveCollation)
                            )
-                         )
-       _          <- if (bulkUpdates.isEmpty) Future.unit
-                     else collection.bulkWrite(bulkUpdates).toFuture().map(_=> ())
-    } yield ()
+      _           <- if   bulkUpdates.isEmpty
+                     then Future.unit
+                     else collection.bulkWrite(bulkUpdates).toFuture().map(_ => ())
+    yield ()
 
 
   def findAll(): Future[Seq[Team]] =
@@ -73,7 +74,7 @@ class TeamsRepository @Inject()(
       .find()
       .toFuture()
 
-  def findByTeamName(teamName: String): Future[Option[Team]] = {
+  def findByTeamName(teamName: String): Future[Option[Team]] =
     collection
       .find(
         or(
@@ -83,13 +84,11 @@ class TeamsRepository @Inject()(
       )
       .collation(caseInsensitiveCollation)
       .headOption()
-  }
-}
+end TeamsRepository
 
-object TeamsRepository {
+object TeamsRepository:
   private val caseInsensitiveCollation: Collation =
     Collation.builder()
       .locale("en")
       .collationStrength(CollationStrength.SECONDARY)
       .build
-}

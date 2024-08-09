@@ -19,11 +19,12 @@ package uk.gov.hmrc.usermanagement.service
 import com.typesafe.config.ConfigFactory
 import org.apache.pekko.actor.ActorSystem
 import org.mockito.ArgumentMatchers.any
-import org.mockito.MockitoSugar.{mock, when}
-import org.mockito.scalatest.MockitoSugar
+import org.mockito.Mockito.{verify, when}
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.config.SchedulerConfig
@@ -34,23 +35,22 @@ import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-
 class DataRefreshServiceSpec
   extends AnyWordSpec
     with Matchers
     with ScalaFutures
     with MockitoSugar
-    with IntegrationPatience {
+    with IntegrationPatience:
 
-  private implicit val hc: HeaderCarrier = HeaderCarrier()
-  private implicit val as: ActorSystem = ActorSystem("test")
+  private given HeaderCarrier = HeaderCarrier()
+  private given ActorSystem   = ActorSystem("test")
 
-  "updateUsersAndTeams" should {
-    "update the Users and Teams repositories based on the data received from UMP" in new Setup {
+  "updateUsersAndTeams" should:
+    "update the Users and Teams repositories based on the data received from UMP" in new Setup:
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]), //role defaulted to "user" should get updated to admin when refreshed
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]), //role defaulted to "user" should get updated to admin when refreshed
         )))
 
       when(umpConnector.getAllTeams())
@@ -85,22 +85,21 @@ class DataRefreshServiceSpec
       service.updateUsersAndTeams().futureValue
 
       verify(usersRepository).putAll(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq("team1")),
-        User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", slackId = Some("ABCD"), username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2")),
+        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None,         username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1")),
+        User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = Some("ABCD"), username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2")),
       ))
 
       verify(teamsRepository).putAll(Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")),       teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "jane.doe",   displayName = Some("Jane Doe"),   role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
-    }
 
-    "Handle users existing in more than one team" in new Setup {
+    "Handle users existing in more than one team" in new Setup:
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String]),
-          User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq.empty[String]),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq.empty[String]),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq.empty[String]),
         )))
 
       when(umpConnector.getAllTeams())
@@ -168,22 +167,19 @@ class DataRefreshServiceSpec
         Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "team-admin"), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
-    }
-  }
-}
+end DataRefreshServiceSpec
 
-trait Setup {
+trait Setup:
   val umpConnector    = mock[UmpConnector]
   val usersRepository = mock[UsersRepository]
   val teamsRepository = mock[TeamsRepository]
   val slackConnector  = mock[SlackConnector]
-  val schedulerConfig = new SchedulerConfig(Configuration(ConfigFactory.load("application.conf")))
+  val schedulerConfig = SchedulerConfig(Configuration(ConfigFactory.load("application.conf")))
 
-  val service = new DataRefreshService(umpConnector, usersRepository, teamsRepository, schedulerConfig, slackConnector)
+  val service: DataRefreshService = DataRefreshService(umpConnector, usersRepository, teamsRepository, schedulerConfig, slackConnector)
 
   when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
 
   when(usersRepository.putAll(any[Seq[User]]))
     .thenReturn(Future.successful( () ))
-}

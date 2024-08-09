@@ -17,6 +17,7 @@
 package uk.gov.hmrc.usermanagement.persistence
 
 import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions, DeleteOneModel}
+import org.mongodb.scala.ObservableFuture
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.User
@@ -27,8 +28,8 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class UsersRepository @Inject()(
  mongoComponent: MongoComponent,
-)(implicit
- ec            : ExecutionContext
+)(using
+  ExecutionContext
 ) extends PlayMongoRepository(
   collectionName = "users",
   mongoComponent = mongoComponent,
@@ -37,34 +38,33 @@ class UsersRepository @Inject()(
                      IndexModel(Indexes.ascending("username"),      IndexOptions().unique(true).background(true)),
                      IndexModel(Indexes.ascending("githubUsername"),IndexOptions().unique(false).background(true))
                    )
-) {
+):
 
   // No ttl required for this collection - putAll cleans out stale data
   override lazy val requiresTtlIndex = false
 
   def putAll(users: Seq[User]): Future[Unit] =
-    for {
+    for
       old         <- collection.find().toFuture()
       bulkUpdates =  //upsert any that were not present already
                      users
                        .filterNot(old.contains)
-                       .map(entry =>
+                       .map: entry =>
                          ReplaceOneModel(
                            Filters.equal("username", entry.username),
                            entry,
                            ReplaceOptions().upsert(true)
                          )
-                       ) ++
+                       ++
                      // delete any that are no longer present
                        old.filterNot(u => users.exists(_.username == u.username))
-                         .map(entry =>
+                         .map: entry =>
                            DeleteOneModel(
                              Filters.equal("username", entry.username)
                            )
-                         )
-       _          <- if (bulkUpdates.isEmpty) Future.unit
+      _           <- if   (bulkUpdates.isEmpty) Future.unit
                      else collection.bulkWrite(bulkUpdates).toFuture().map(_=> ())
-    } yield ()
+    yield ()
 
   def find(
     team  : Option[String] = None,
@@ -81,4 +81,4 @@ class UsersRepository @Inject()(
     collection
       .find(Filters.equal("username", username))
       .headOption()
-}
+end UsersRepository

@@ -17,11 +17,10 @@
 package uk.gov.hmrc.usermanagement.connectors
 
 import play.api.Configuration
-import play.api.libs.functional.syntax.unlift
-import play.api.libs.functional.syntax._
+import play.api.libs.functional.syntax.*
 import play.api.libs.json.{Format, __}
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
-import uk.gov.hmrc.http.HttpReads.Implicits._
+import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.usermanagement.model.SlackUser
 
@@ -32,8 +31,9 @@ import scala.concurrent.{ExecutionContext, Future}
 class SlackConnector @Inject()(
   httpClientV2 : HttpClientV2,
   configuration: Configuration
-)(implicit ec: ExecutionContext) {
-
+)(using
+  ExecutionContext
+):
   private lazy val apiUrl: String =
     configuration.get[String]("slack.apiUrl")
 
@@ -43,35 +43,32 @@ class SlackConnector @Inject()(
   private lazy val limit: Int =
     configuration.get[Int]("slack.limit")
 
-  private def getSlackUsersPage(cursor: String)(implicit hc: HeaderCarrier): Future[SlackUserListPage] = {
-    implicit val sulpF: Format[SlackUserListPage] = SlackUserListPage.format
+  private def getSlackUsersPage(cursor: String)(using HeaderCarrier): Future[SlackUserListPage] =
+    given Format[SlackUserListPage] = SlackUserListPage.format
     httpClientV2
       .get(url"$apiUrl/users.list?limit=$limit&cursor=$cursor")
       .setHeader("Authorization" -> s"Bearer $token")
       .withProxy
       .execute[SlackUserListPage]
-  }
 
-  def getAllSlackUsers()(implicit hc: HeaderCarrier): Future[Seq[SlackUser]] = {
+  def getAllSlackUsers()(using HeaderCarrier): Future[Seq[SlackUser]] =
     def go(cursor: String, accMembers: Seq[SlackUser]): Future[Seq[SlackUser]] =
-      getSlackUsersPage(cursor).flatMap { result =>
+      getSlackUsersPage(cursor).flatMap: result =>
         val newMembers = accMembers ++ result.members
-        if (result.nextCursor.isEmpty) Future.successful(newMembers)
-          else go(result.nextCursor, newMembers)
-      }
+        if   result.nextCursor.isEmpty
+        then Future.successful(newMembers)
+        else go(result.nextCursor, newMembers)
     go("", Seq.empty)
-  }
-}
+end SlackConnector
 
 private final case class SlackUserListPage(
   members   : Seq[SlackUser],
   nextCursor: String
 )
 
-private object SlackUserListPage {
-  implicit val suF: Format[SlackUser] = SlackUser.format
+private object SlackUserListPage:
+  given Format[SlackUser] = SlackUser.format
   val format: Format[SlackUserListPage] =
-    ( (__ \ "members").format[Seq[SlackUser]]
+    ( (__ \ "members"                          ).format[Seq[SlackUser]]
     ~ (__ \ "response_metadata" \ "next_cursor").format[String]
-    )(SlackUserListPage.apply, unlift(SlackUserListPage.unapply))
-}
+    )(SlackUserListPage.apply, pt => Tuple.fromProductTyped(pt))

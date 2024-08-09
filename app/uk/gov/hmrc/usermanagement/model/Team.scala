@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.usermanagement.model
 
-import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{OFormat, __}
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
 
 case class Team(
  members          : Seq[Member],
@@ -28,32 +28,26 @@ case class Team(
  slackNotification: Option[String]
 )
 
-object Team {
-
-  val format: OFormat[Team] = {
-    implicit val tmf = Member.format
+object Team:
+  val format: OFormat[Team] =
+    given Format[Member] = Member.format
     ( (__ \ "members"         ).format[Seq[Member]]
     ~ (__ \"teamName"         ).format[String]
     ~ (__ \"description"      ).formatNullable[String]
     ~ (__ \"documentation"    ).formatNullable[String]
     ~ (__ \"slack"            ).formatNullable[String]
     ~ (__ \"slackNotification").formatNullable[String]
-    )(Team.apply, unlift(Team.unapply))
-  }
-
-}
-
+    )(Team.apply, pt => Tuple.fromProductTyped(pt))
+  
 case class Member(
   username   : String,
   displayName: Option[String],
   role       : String
 )
 
-object Member {
-  val format: OFormat[Member] = {
+object Member:
+  val format: OFormat[Member] =
     ( (__ \ "username"   ).format[String]
     ~ (__ \ "displayName").formatNullable[String]
     ~ (__ \ "role"       ).format[String]
-    )(Member.apply, unlift(Member.unapply))
-  }
-}
+    )(Member.apply, pt => Tuple.fromProductTyped(pt))
