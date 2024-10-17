@@ -16,14 +16,17 @@
 
 package uk.gov.hmrc.usermanagement.connectors
 
-import play.api.{Configuration, Logging}
 import play.api.cache.AsyncCacheApi
+import play.api.http.Status.INTERNAL_SERVER_ERROR
 import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
+import play.api.{Configuration, Logging}
+import uk.gov.hmrc.http.HttpErrorFunctions.is2xx
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
+import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
+import uk.gov.hmrc.usermanagement.model.{CreateUserRequest, Member, Team, User}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.Duration
@@ -33,12 +36,13 @@ import scala.concurrent.{ExecutionContext, Future}
 class UmpConnector @Inject()(
   config        : Configuration,
   httpClientV2  : HttpClientV2,
+  servicesConfig: ServicesConfig,
   tokenCache    : AsyncCacheApi
 )(using
   ExecutionContext
 ) extends Logging:
 
-  import uk.gov.hmrc.http.HttpReads.Implicits._
+  import uk.gov.hmrc.http.HttpReads.Implicits.*
 
   private val userManagementBaseUrl : String   = config.get[String]("ump.baseUrl")
   private val userManagementLoginUrl: String   = config.get[String]("ump.loginUrl")
@@ -46,7 +50,13 @@ class UmpConnector @Inject()(
   private val username              : String   = config.get[String]("ump.auth.username")
   private val password              : String   = config.get[String]("ump.auth.password")
 
-  import UmpConnector._
+  import UmpConnector.*
+
+  private def getInternalAuthUmpToken()(using hc: HeaderCarrier): Future[String] =
+    val internalAuthBaseUrl = servicesConfig.baseUrl("internal-auth")
+    httpClientV2
+      .get(url"$internalAuthBaseUrl/internal-auth/ump/token")
+      .execute[String]
 
   private def getToken(): Future[UmpAuthToken] =
     tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
@@ -74,6 +84,25 @@ class UmpConnector @Inject()(
     yield
       resp.filterNot: user =>
         nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
+
+  def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[Either[UpstreamErrorResponse, JsValue]] =
+    getInternalAuthUmpToken()
+      .flatMap: umpToken =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/user_requests/users/none")
+          .setHeader("Token" -> umpToken)
+          .withBody(Json.toJson(createUserRequest)(CreateUserRequest.writes))
+          .execute[HttpResponse]
+          .map: response =>
+            response.status match
+              case status if is2xx(status) =>
+                Right(response.json)
+              case status =>
+                logger.warn(s"Received a $status response when creating user. Response: ${response.body}")
+                Left(UpstreamErrorResponse(s"Received a $status response when creating user.", status))
+          .recover:
+            case ex: Exception =>
+              Left(UpstreamErrorResponse(s"Create user request failed: ${ex.getMessage}", INTERNAL_SERVER_ERROR))
 
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams
