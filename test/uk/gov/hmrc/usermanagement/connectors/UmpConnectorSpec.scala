@@ -17,16 +17,17 @@
 package uk.gov.hmrc.usermanagement.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
-import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
+import play.api.libs.json.*
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
-import uk.gov.hmrc.usermanagement.model.{Member, Team, User}
+import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
+import uk.gov.hmrc.usermanagement.model.*
 
 class UmpConnectorSpec
   extends AnyWordSpec
@@ -45,6 +46,8 @@ class UmpConnectorSpec
       .configure(
         "microservice.services.user-management.port" -> wireMockPort,
         "microservice.services.user-management.host" -> wireMockHost,
+        "microservice.services.internal-auth.port"   -> wireMockPort,
+        "microservice.services.internal-auth.host"   -> wireMockHost,
         "play.http.requestHandler"                   -> "play.api.http.DefaultHttpRequestHandler",
         "metrics.jvm"                                -> false,
         "ump.auth.username"                          -> "user",
@@ -121,6 +124,72 @@ class UmpConnectorSpec
           User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String]),
           User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = None,         primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None,         phoneNumber = None,                role="user", teamNames = Seq.empty[String])
         )
+
+  "createUser" when :
+    "parsing a valid response" should :
+      "return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/user_requests/users/none"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"status": "OK"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.createUser(createUserRequest).futureValue
+
+        res shouldBe ()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/user_requests/users/none"))
+            .willReturn(
+              aResponse()
+                .withStatus(500)
+                .withBody("""{"message": "Error creating user: One of username or displayName must be set"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.createUser(createUserRequest).failed.futureValue
+
+        res shouldBe a [UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.createUser(createUserRequest).failed.futureValue
+
+        res shouldBe a [UpstreamErrorResponse]
 
   "getAllTeams" when:
     "parsing a valid response" should:
@@ -282,3 +351,26 @@ trait Setup:
           .withBody(s"""{"Token":"token","uid": "uid"}""")
       )
   )
+
+  val createUserRequest: CreateUserRequest =
+    CreateUserRequest(
+      contactComments = "comments",
+      contactEmail = "email@address",
+      familyName = "doe",
+      givenName = "john",
+      organisation = "SomeOrg",
+      team = "SomeTeam",
+      userDisplayName = "John Doe",
+      access = Access(
+        ldap = true,
+        vpn = true,
+        jira = true,
+        confluence = true,
+        environments = true,
+        googleApps = true,
+        bitwarden = true
+      ),
+      isReturningUser = false,
+      isTransitoryUser = false,
+      isExistingLDAPUser = false
+    )
