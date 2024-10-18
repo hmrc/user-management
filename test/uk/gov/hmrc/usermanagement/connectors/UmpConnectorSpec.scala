@@ -17,18 +17,18 @@
 package uk.gov.hmrc.usermanagement.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock.*
-import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import play.api.http.Status.OK
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
+import play.api.http.Status.OK
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.*
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
-import uk.gov.hmrc.usermanagement.model.{Access, CreateUserRequest, Member, Team, User}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, JsValidationException, UpstreamErrorResponse}
+import uk.gov.hmrc.usermanagement.model.*
 
 class UmpConnectorSpec
   extends AnyWordSpec
@@ -128,7 +128,7 @@ class UmpConnectorSpec
 
   "createUser" when :
     "parsing a valid response" should :
-      "return that response" in new Setup:
+      "return unit" in new Setup:
         stubFor(
           post(urlEqualTo("/v2/user_requests/users/none"))
             .willReturn(
@@ -146,11 +146,36 @@ class UmpConnectorSpec
                 .withBody(JsString("token").toString)
             )
         )
-        
-        val res: HttpResponse =
+
+        val res: Unit =
           userManagementConnector.createUser(createUserRequest).futureValue
 
-        res.status shouldBe OK
+        res shouldBe ()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/user_requests/users/none"))
+            .willReturn(
+              aResponse()
+                .withStatus(500)
+                .withBody("""{"message": "Error creating user: One of username or displayName must be set"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.createUser(createUserRequest).failed.futureValue
+
+        res shouldBe a [UpstreamErrorResponse]
 
     "it receives a 401 response from internal auth" should :
       "return an UpstreamErrorResponse" in new Setup:
@@ -161,12 +186,12 @@ class UmpConnectorSpec
                 .withStatus(401)
             )
         )
-        
+
         val res: Throwable =
           userManagementConnector.createUser(createUserRequest).failed.futureValue
 
         res shouldBe a [UpstreamErrorResponse]
-        
+
   "getAllTeams" when:
     "parsing a valid response" should:
       "return a sequence of Teams" in new Setup:
@@ -327,7 +352,7 @@ trait Setup:
           .withBody(s"""{"Token":"token","uid": "uid"}""")
       )
   )
-    
+
   val createUserRequest: CreateUserRequest =
     CreateUserRequest(
       contactComments = "comments",

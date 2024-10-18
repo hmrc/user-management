@@ -17,13 +17,13 @@
 package uk.gov.hmrc.usermanagement.controllers
 
 import play.api.Logging
-import play.api.libs.json.{JsError, JsSuccess, JsValue, Json, Writes}
+import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
+import uk.gov.hmrc.http.HttpErrorFunctions.is2xx
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.{CreateUserRequest, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
-import uk.gov.hmrc.http.HttpErrorFunctions.is2xx
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -60,10 +60,7 @@ class UserManagementController @Inject()(
     implicit request =>
       request.body.validate[CreateUserRequest](CreateUserRequest.reads) match
         case JsSuccess(value, path) =>
-          umpConnector.createUser(value).map: res =>
-            res.status match
-              case status if is2xx(status) => Created
-              case status                  => Status(status)(res.body)
+          umpConnector.createUser(value).map(_ => Created)
         case JsError(errors) =>
           Future.successful(BadRequest(s"Invalid JSON, unable to process due to errors: $errors"))
 

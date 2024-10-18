@@ -85,15 +85,18 @@ class UmpConnector @Inject()(
       resp.filterNot: user =>
         nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
 
-  def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[HttpResponse] =
+  def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[Unit] =
     getInternalAuthUmpToken()
       .flatMap: umpToken =>
         httpClientV2
           .post(url"$userManagementBaseUrl/v2/user_requests/users/none")
           .setHeader("Token" -> umpToken)
           .withBody(Json.toJson(createUserRequest)(CreateUserRequest.writes))
-          .execute[HttpResponse]
-
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.successful(())
+            case Left(e)  => Future.failed(e)
+              
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams
     for
