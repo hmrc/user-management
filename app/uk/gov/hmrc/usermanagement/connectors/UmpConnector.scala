@@ -85,7 +85,7 @@ class UmpConnector @Inject()(
       resp.filterNot: user =>
         nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
 
-  def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[Either[UpstreamErrorResponse, JsValue]] =
+  def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[HttpResponse] =
     getInternalAuthUmpToken()
       .flatMap: umpToken =>
         httpClientV2
@@ -93,16 +93,6 @@ class UmpConnector @Inject()(
           .setHeader("Token" -> umpToken)
           .withBody(Json.toJson(createUserRequest)(CreateUserRequest.writes))
           .execute[HttpResponse]
-          .map: response =>
-            response.status match
-              case status if is2xx(status) =>
-                Right(response.json)
-              case status =>
-                logger.warn(s"Received a $status response when creating user. Response: ${response.body}")
-                Left(UpstreamErrorResponse(s"Received a $status response when creating user.", status))
-          .recover:
-            case ex: Exception =>
-              Left(UpstreamErrorResponse(s"Create user request failed: ${ex.getMessage}", INTERNAL_SERVER_ERROR))
 
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams

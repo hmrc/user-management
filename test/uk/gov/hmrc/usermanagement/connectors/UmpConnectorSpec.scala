@@ -19,13 +19,14 @@ package uk.gov.hmrc.usermanagement.connectors
 import com.github.tomakehurst.wiremock.client.WireMock.*
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
+import play.api.http.Status.OK
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
-import play.api.libs.json._
-import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
+import play.api.libs.json.*
+import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.usermanagement.model.{Access, CreateUserRequest, Member, Team, User}
 
@@ -127,7 +128,7 @@ class UmpConnectorSpec
 
   "createUser" when :
     "parsing a valid response" should :
-      "return a Right with a json response" in new Setup:
+      "return that response" in new Setup:
         stubFor(
           post(urlEqualTo("/v2/user_requests/users/none"))
             .willReturn(
@@ -146,35 +147,10 @@ class UmpConnectorSpec
             )
         )
         
-        val res: Either[UpstreamErrorResponse, JsValue] =
+        val res: HttpResponse =
           userManagementConnector.createUser(createUserRequest).futureValue
 
-        res shouldBe Right(Json.parse("""{"status": "OK"}"""))
-
-    "it receives a non 2xx status code response" should :
-      "return a Left with an UpstreamErrorResponse" in new Setup:
-        stubFor(
-          post(urlEqualTo("/v2/user_requests/users/none"))
-            .willReturn(
-              aResponse()
-                .withStatus(500)
-                .withBody("""{"message": "Error creating user: One of username or displayName must be set"}""")
-            )
-        )
-
-        stubFor(
-          get(urlEqualTo("/internal-auth/ump/token"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBody(JsString("token").toString)
-            )
-        )
-        
-        val res: Either[UpstreamErrorResponse, JsValue] =
-          userManagementConnector.createUser(createUserRequest).futureValue
-          
-        res shouldBe Left(UpstreamErrorResponse(s"Received a 500 response when creating user.", 500))
+        res.status shouldBe OK
 
     "it receives a 401 response from internal auth" should :
       "return an UpstreamErrorResponse" in new Setup:
