@@ -94,7 +94,7 @@ class UmpConnector @Inject()(
           .withBody(Json.toJson(createUserRequest)(CreateUserRequest.writes))
           .execute[Either[UpstreamErrorResponse, Unit]]
           .flatMap:
-            case Right(_) => Future.successful(())
+            case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
               
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
