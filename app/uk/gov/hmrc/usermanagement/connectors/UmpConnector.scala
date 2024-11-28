@@ -16,21 +16,19 @@
 
 package uk.gov.hmrc.usermanagement.connectors
 
+import play.api.{Configuration, Logging}
 import play.api.cache.AsyncCacheApi
-import play.api.http.Status.INTERNAL_SERVER_ERROR
 import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
-import play.api.{Configuration, Logging}
-import uk.gov.hmrc.http.HttpErrorFunctions.is2xx
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, HttpResponse, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
 import uk.gov.hmrc.usermanagement.model.{CreateUserRequest, Member, Team, User}
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
 
 @Singleton
 class UmpConnector @Inject()(
@@ -70,7 +68,7 @@ class UmpConnector @Inject()(
       token <- httpClientV2.post(url"$userManagementLoginUrl")
                  .withBody(Json.toJson(UmpLoginRequest(username, password)))
                  .execute[UmpAuthToken]
-      _      = logger.info("logged into UMP")
+      _     =  logger.info("logged into UMP")
     yield token
 
   def getAllUsers()(using HeaderCarrier): Future[Seq[User]] =
@@ -96,7 +94,7 @@ class UmpConnector @Inject()(
           .flatMap:
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
-              
+
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams
     for
@@ -136,7 +134,7 @@ object UmpConnector:
 
   case class UmpAuthToken(token: String, uid: String):
     def asHeaders(): Seq[(String, String)] =
-      Seq( "Token" -> token, "requester" -> uid)
+      Seq("Token" -> token, "requester" -> uid)
 
   object UmpAuthToken:
     val reads: Reads[UmpAuthToken] =
@@ -186,4 +184,5 @@ object UmpConnector:
   val readsAtTeams: Reads[Seq[Team]] =
     given Reads[Team] = umpTeamReads
     Reads.at[Seq[Team]](__ \ "teams")
+
 end UmpConnector
