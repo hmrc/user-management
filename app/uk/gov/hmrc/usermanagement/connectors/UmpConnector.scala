@@ -24,7 +24,7 @@ import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.usermanagement.model.{CreateUserRequest, Member, Team, User}
+import uk.gov.hmrc.usermanagement.model._
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -50,13 +50,14 @@ class UmpConnector @Inject()(
 
   import UmpConnector.*
 
-  private def getInternalAuthUmpToken()(using hc: HeaderCarrier): Future[String] =
-    val internalAuthBaseUrl = servicesConfig.baseUrl("internal-auth")
+  private def getUsersUmpToken()(using hc: HeaderCarrier): Future[UsersUmpAuthToken] =
+    given Reads[UsersUmpAuthToken] = UsersUmpAuthToken.reads
+    val internalAuthBaseUrl   = servicesConfig.baseUrl("internal-auth")
     httpClientV2
       .get(url"$internalAuthBaseUrl/internal-auth/ump/token")
-      .execute[String]
+      .execute[UsersUmpAuthToken]
 
-  private def getToken(): Future[UmpAuthToken] =
+  private def getUserManagementUmpToken(): Future[UmpAuthToken] =
     tokenCache.getOrElseUpdate[UmpAuthToken]("token", tokenTTL)(retrieveToken())
 
   private def retrieveToken(): Future[UmpAuthToken] =
@@ -74,7 +75,7 @@ class UmpConnector @Inject()(
   def getAllUsers()(using HeaderCarrier): Future[Seq[User]] =
     given Reads[Seq[User]] = readsAtUsers
     for
-      token <- getToken()
+      token <- getUserManagementUmpToken()
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/users")
                  .setHeader(token.asHeaders():_*)
@@ -84,21 +85,47 @@ class UmpConnector @Inject()(
         nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
 
   def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[Unit] =
-    getInternalAuthUmpToken()
-      .flatMap: umpToken =>
+    getUsersUmpToken()
+      .flatMap: token =>
         httpClientV2
           .post(url"$userManagementBaseUrl/v2/user_requests/users/none")
-          .setHeader("Token" -> umpToken)
+          .setHeader(token.asHeaders():_*)
           .withBody(Json.toJson(createUserRequest)(CreateUserRequest.writes))
           .execute[Either[UpstreamErrorResponse, Unit]]
           .flatMap:
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
 
+  def editUserAccess(editUserAccessRequest: EditUserAccessRequest)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/user_requests/users/${editUserAccessRequest.username}")
+          .setHeader(token.asHeaders():_*)
+          .withBody(Json.toJson(editUserAccessRequest)(EditUserAccessRequest.writes))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e) => Future.failed(e)
+
+  def getUserAccess(username: String)(using HeaderCarrier): Future[Option[UserAccess]] =
+    given Reads[UserAccess] = UserAccess.reads
+    getUserManagementUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .get(url"$userManagementBaseUrl/v2/organisations/users/$username/access")
+          .setHeader(token.asHeaders():_*)
+          .execute[Option[UserAccess]]
+          .recover:
+            case UpstreamErrorResponse.WithStatusCode(404) =>
+              logger.warn(s"Received a 404 response when getting access for user: $username. " +
+                s"This indicates the user does not exist within UMP.")
+              None
+
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams
     for
-      token <- getToken()
+      token <- getUserManagementUmpToken()
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/teams")
                  .setHeader(token.asHeaders():_*)
@@ -108,7 +135,7 @@ class UmpConnector @Inject()(
   def getTeamWithMembers(teamName: String)(using HeaderCarrier): Future[Option[Team]] =
     given Reads[Team] = umpTeamReads
     for
-      token <- getToken()
+      token <- getUserManagementUmpToken()
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members")
                  .setHeader(token.asHeaders():_*)
@@ -141,6 +168,14 @@ object UmpConnector:
       ( (__ \ "Token").read[String]
       ~ (__ \ "uid"  ).read[String]
       )(UmpAuthToken.apply _)
+
+  case class UsersUmpAuthToken(token: String):
+    def asHeaders(): Seq[(String, String)] =
+      Seq("Token" -> token)
+
+  object UsersUmpAuthToken:
+    val reads: Reads[UsersUmpAuthToken] =
+      __.read[String].map(UsersUmpAuthToken.apply)
 
   case class UmpLoginRequest(
     username: String,

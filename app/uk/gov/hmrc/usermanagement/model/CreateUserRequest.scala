@@ -98,3 +98,56 @@ object Access:
     ).flatten
 
     JsObject(fields)
+
+case class EditUserAccessRequest(
+  username          : String,
+  organisation      : String,
+  access            : EditAccess,
+  isExistingLDAPUser: Boolean
+)
+
+object EditUserAccessRequest:
+  val reads: Reads[EditUserAccessRequest] =
+    ( (__ \ "username"          ).read[String]
+    ~ (__ \ "organisation"      ).read[String]
+    ~ (__ \ "access"            ).read[EditAccess](EditAccess.reads)
+    ~ (__ \ "isExistingLDAPUser").read[Boolean]
+    )(EditUserAccessRequest.apply _)
+
+  val writes: OWrites[EditUserAccessRequest] =
+    ( (__ \ "username"          ).write[String]
+    ~ (__ \ "organisation"      ).write[String]
+    ~ (__ \ "access"            ).write[EditAccess](EditAccess.writes)
+    ~ (__ \ "isExistingLDAPUser").write[Boolean]
+    )(c => Tuple.fromProductTyped(c))
+
+case class EditAccess(
+  vpn: Boolean,
+  jira: Boolean,
+  confluence: Boolean,
+  environments: Boolean,
+  googleApps: Boolean,
+  bitwarden: Boolean
+)
+
+object EditAccess:
+  val reads: Reads[EditAccess] =
+    ( (__ \ "vpn"         ).read[Boolean]
+    ~ (__ \ "jira"        ).read[Boolean]
+    ~ (__ \ "confluence"  ).read[Boolean]
+    ~ (__ \ "environments").read[Boolean]
+    ~ (__ \ "googleApps"  ).read[Boolean]
+    ~ (__ \ "bitwarden"   ).read[Boolean]
+    )(EditAccess.apply _)
+
+  val writes: OWrites[EditAccess] = (access: EditAccess) =>
+    val fields = Seq(
+      if access.vpn          then Some("vpn"          -> JsString("todo")) else None,
+      if access.jira         then Some("jira"         -> JsString("todo")) else None,
+      if access.confluence   then Some("confluence"   -> JsString("todo")) else None,
+      if access.environments then Some("environments" -> JsString("todo")) else None,
+      if access.googleApps   then Some("googleApps"   -> JsString("todo")) else None,
+      if access.bitwarden    then Some("bitwarden"    -> JsString("todo")) else None
+    ).flatten
+
+    JsObject(fields)

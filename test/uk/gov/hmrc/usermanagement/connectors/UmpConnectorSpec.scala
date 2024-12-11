@@ -191,6 +191,123 @@ class UmpConnectorSpec
 
         res shouldBe a [UpstreamErrorResponse]
 
+  "editUserAccess" when :
+    "parsing a valid response" should :
+      "return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo(s"/v2/user_requests/users/$username"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"status": "OK"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.editUserAccess(editUserAccessRequest).futureValue
+
+        res shouldBe()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo(s"/v2/user_requests/users/$username"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+                .withBody("""{"message": "Not authorised for operation"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserAccess(editUserAccessRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserAccess(editUserAccessRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+  "getUserAccess" when :
+    "parsing a valid response" should :
+      "return a UserAccess" in new Setup:
+        stubFor(
+          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("valid-user-access.json")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res = userManagementConnector.getUserAccess(username).futureValue
+
+        res shouldBe Some(UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true))
+
+    "it receives a 404 status code response" should :
+      "recover and return None" in new Setup:
+        stubFor(
+          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
+            .willReturn(
+              aResponse()
+                .withStatus(404)
+            )
+        )
+
+        val res = userManagementConnector.getUserAccess(username).futureValue
+        res shouldBe None
+
+    "it receives a non 200 status code response" should :
+      "recover and return None" in new Setup:
+        stubFor(
+          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
+            .willReturn(
+              aResponse()
+                .withStatus(500)
+            )
+        )
+
+        val res = userManagementConnector.getAllTeams().failed.futureValue
+        res shouldBe a[UpstreamErrorResponse]
+
   "getAllTeams" when:
     "parsing a valid response" should:
       "return a sequence of Teams" in new Setup:
@@ -373,4 +490,21 @@ trait Setup:
       isReturningUser = false,
       isTransitoryUser = false,
       isExistingLDAPUser = false
+    )
+
+  val username = "john.doe"
+
+  val editUserAccessRequest: EditUserAccessRequest =
+    EditUserAccessRequest(
+      username = username,
+      organisation = "SomeOrg",
+      access = EditAccess(
+        vpn = true,
+        jira = true,
+        confluence = true,
+        environments = true,
+        googleApps = true,
+        bitwarden = true
+      ),
+      isExistingLDAPUser = true
     )

@@ -1,10 +1,12 @@
 # microservice specific routes
 
-GET        /users              uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUsers(team: Option[String] ?= None, github: Option[String] ?= None)
-GET        /users/:user        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserByUsername(user)
+GET        /users                   uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUsers(team: Option[String] ?= None, github: Option[String] ?= None)
+GET        /users/:user             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserByUsername(user)
+GET        /users/:user/access      uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserAccess(user)
 
-POST       /create-user        uk.gov.hmrc.usermanagement.controllers.UserManagementController.createUser
+POST       /create-user             uk.gov.hmrc.usermanagement.controllers.UserManagementController.createUser
+POST       /edit-user-access        uk.gov.hmrc.usermanagement.controllers.UserManagementController.editUserAccess
 
-GET        /teams              uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams
-GET        /teams/:team        uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team)
+GET        /teams                   uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams
+GET        /teams/:team             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team)
 
