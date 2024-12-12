@@ -57,6 +57,20 @@ class UserManagementController @Inject()(
       .map:
         _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
 
+  def getUsersByQuery(query: Option[String]): Action[AnyContent] = Action.async:
+    val searchTerms =
+      query.fold(Seq.empty[String]): term =>
+        term
+          .trim.split("\\s+")   // query is space-delimited
+          .toIndexedSeq
+
+    if   searchTerms.isEmpty
+    then Future.successful(BadRequest(Json.toJson(Seq.empty[User])))
+    else usersRepository.search(searchTerms)
+           .map: res =>
+             Ok(Json.toJson(res))
+
+
   def createUser: Action[JsValue] = Action.async(parse.json):
     implicit request =>
       request.body.validate[CreateUserRequest](CreateUserRequest.reads) match
