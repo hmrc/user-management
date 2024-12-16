@@ -271,4 +271,50 @@ class UserRepositorySpec
       repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
 
       repository.findByUsername("jane.doe").futureValue shouldBe None
+
+  "UsersRepository.search" should:
+    val userOne      = User(
+      displayName    = Some("Joe Bloggs"),
+      familyName     = "Bloggs",
+      givenName      = Some("Joe"),
+      organisation   = Some("MDTP"),
+      primaryEmail   = "joe.bloggs@gmail.com",
+      slackId        = None,
+      username       = "joe.bloggs",
+      githubUsername = Some("joeGithub"),
+      phoneNumber    = None,
+      role           = "team-admin",
+      teamNames      = Seq("team1", "team2")
+    )
+
+    val userTwo      = User(
+      displayName    = Some("John Smith"),
+      familyName     = "Smith",
+      givenName      = Some("John"),
+      organisation   = Some("MDTP"),
+      primaryEmail   = "john.smith@gmail.com",
+      slackId        = None,
+      username       = "john.smith",
+      githubUsername = None,
+      phoneNumber    = None,
+      role           = "team-admin",
+      teamNames      = Seq("team2")
+    )
+
+    "search for a user using a search term" in:
+      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
+      repository.search(Seq("Joe")).futureValue shouldBe List(userOne)
+
+    "search for a user using multiple search terms" in :
+      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
+      repository.search(Seq("joeGithub", "Bloggs", "team1")).futureValue shouldBe List(userOne)
+
+    "search for a user with case insensitive search term" in :
+      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
+      repository.search(Seq("joe")).futureValue shouldBe List(userOne)
+
+    "return all users when no there is no search terms" in :
+      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
+      repository.search(Seq("")).futureValue shouldBe List(userOne, userTwo)
+
 end UserRepositorySpec

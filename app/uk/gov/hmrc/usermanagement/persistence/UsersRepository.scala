@@ -77,6 +77,23 @@ class UsersRepository @Inject()(
       )
     ).toFuture()
 
+  def search(searchTerms: Seq[String]): Future[Seq[User]] =
+    collection.find(
+      Filters.and(
+        searchTerms.map: term =>
+          val regex = s".*$term.*"
+          Filters.or(
+            Filters.regex("displayName"   , regex, "i")
+          , Filters.regex("familyName"    , regex, "i")
+          , Filters.regex("givenName"     , regex, "i")
+          , Filters.regex("username"      , regex, "i")
+          , Filters.regex("githubUsername", regex, "i")
+          , Filters.regex("teamNames"     , regex, "i")
+          )
+        : _*
+      )
+    ).toFuture()
+
   def findByUsername(username: String): Future[Option[User]] =
     collection
       .find(Filters.equal("username", username))

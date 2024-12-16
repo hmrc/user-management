@@ -19,7 +19,9 @@ package uk.gov.hmrc.usermanagement.controllers
 import play.api.Logging
 import play.api.libs.json.*
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
+import play.api.libs.json.Json.toJson
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
+import uk.gov.hmrc.play.bootstrap.backend.http.ErrorResponse
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.{CreateUserRequest, EditUserAccessRequest, Team, User, UserAccess}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
@@ -56,6 +58,13 @@ class UserManagementController @Inject()(
     usersRepository.findByUsername(username)
       .map:
         _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
+
+  def getUsersByQuery(query: Seq[String]): Action[AnyContent] = Action.async:
+    if   query.length > 3 // cap number of searchable terms at 3
+    then Future.successful(BadRequest(toJson(ErrorResponse(BAD_REQUEST, "Too many search terms - maximum of 3"))))
+    else usersRepository.search(query)
+           .map: res =>
+             Ok(Json.toJson(res))
 
   def createUser: Action[JsValue] = Action.async(parse.json):
     implicit request =>
