@@ -457,6 +457,57 @@ class UmpConnectorSpec
           slack             = Some("https://slack.com"),
           slackNotification = None
         ))
+
+  "requestNewVpnCert" when :
+    "parsing a valid response" should :
+      "return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/vpn/create_certificate_request/tom.test"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"ticket_number": "ACRS-1234"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: JsValue =
+          userManagementConnector.requestNewVpnCert("tom.test").futureValue
+
+        res shouldBe Json.parse("""{"ticket_number": "ACRS-1234"}""")
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/vpn/create_certificate_request/tom.test"))
+            .willReturn(
+              aResponse()
+                .withStatus(500)
+                .withBody("""{"message": "internal server error"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.requestNewVpnCert("tom.test").failed.futureValue
+
+        res shouldBe a [UpstreamErrorResponse]
 end UmpConnectorSpec
 
 trait Setup:
