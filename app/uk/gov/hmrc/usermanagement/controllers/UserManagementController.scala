@@ -92,4 +92,8 @@ class UserManagementController @Inject()(
     teamsRepository.findByTeamName(teamName)
       .map:
         _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
+
+  def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:
+    implicit request =>
+      umpConnector.requestNewVpnCert(username).map(json => Created(json))
 end UserManagementController

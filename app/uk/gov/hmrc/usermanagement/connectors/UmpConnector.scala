@@ -153,6 +153,17 @@ class UmpConnector @Inject()(
       team.copy(members = team.members.filterNot: member =>
         nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_))
       )
+  
+  def requestNewVpnCert(username: String)(using HeaderCarrier): Future[JsValue] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/vpn/create_certificate_request/$username")
+          .setHeader(token.asHeaders():_*)
+          .execute[Either[UpstreamErrorResponse, JsValue]]
+          .flatMap:
+            case Right(json) => Future.successful(json)
+            case Left(e)     => Future.failed(e)
 end UmpConnector
 
 object UmpConnector:
