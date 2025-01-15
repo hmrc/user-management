@@ -191,6 +191,72 @@ class UmpConnectorSpec
 
         res shouldBe a [UpstreamErrorResponse]
 
+  "resetUserLdapPassword" when :
+    "parsing a valid response" should :
+      "return a ticket number" in new Setup:
+        stubFor(
+          put(urlEqualTo(s"/v2/organisations/users/$username/password"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"ticket_number": "some-unique-ticket-id"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: JsValue =
+          userManagementConnector.resetUserLdapPassword(resetLdapPassword).futureValue
+
+        res shouldBe Json.parse("""{"ticket_number": "some-unique-ticket-id"}""")
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          put(urlEqualTo(s"/v2/organisations/users/$username/password"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+                .withBody("""{"error": "invalid email given"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.resetUserLdapPassword(resetLdapPassword).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.resetUserLdapPassword(resetLdapPassword).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
   "editUserAccess" when :
     "parsing a valid response" should :
       "return unit" in new Setup:
@@ -558,4 +624,10 @@ trait Setup:
         bitwarden = true
       ),
       isExistingLDAPUser = true
+    )
+
+  val resetLdapPassword: ResetLdapPassword =
+    ResetLdapPassword(
+      username = username,
+      email = "test@test.com"
     )
