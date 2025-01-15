@@ -18,12 +18,12 @@ package uk.gov.hmrc.usermanagement.controllers
 
 import play.api.Logging
 import play.api.libs.json.*
-import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import play.api.libs.json.Json.toJson
+import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.backend.http.ErrorResponse
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
-import uk.gov.hmrc.usermanagement.model.{CreateUserRequest, EditUserAccessRequest, Team, User, UserAccess}
+import uk.gov.hmrc.usermanagement.model.*
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 import uk.gov.hmrc.usermanagement.service.UserAccessService
 
@@ -87,6 +87,14 @@ class UserManagementController @Inject()(
       userAccessService.getUserAccess(username)
         .map:
           _.fold(NotFound: Result)(res => Ok(Json.toJson(res)(UserAccess.writes)))
+
+  def resetUserLdapPassword: Action[JsValue] = Action.async(parse.json):
+    implicit request =>
+      request.body.validate[ResetLdapPassword](ResetLdapPassword.reads) match
+        case JsSuccess(value, path) =>
+          umpConnector.resetUserLdapPassword(value).map(json => Ok(json))
+        case JsError(errors) =>
+          Future.successful(BadRequest(s"Invalid JSON, unable to process due to errors: $errors"))
 
   def getTeamByTeamName(teamName: String): Action[AnyContent] = Action.async:
     teamsRepository.findByTeamName(teamName)
