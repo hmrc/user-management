@@ -24,7 +24,7 @@ import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.play.bootstrap.config.ServicesConfig
-import uk.gov.hmrc.usermanagement.model._
+import uk.gov.hmrc.usermanagement.model.*
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -121,6 +121,18 @@ class UmpConnector @Inject()(
               logger.warn(s"Received a 404 response when getting access for user: $username. " +
                 s"This indicates the user does not exist within UMP.")
               None
+
+  def resetUserLdapPassword(resetLdapPassword: ResetLdapPassword)(using HeaderCarrier): Future[JsValue] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .put(url"$userManagementBaseUrl/v2/organisations/users/${resetLdapPassword.username}/password")
+          .setHeader(token.asHeaders():_*)
+          .withBody(Json.toJson(resetLdapPassword)(ResetLdapPassword.writes))
+          .execute[Either[UpstreamErrorResponse, JsValue]]
+          .flatMap:
+            case Right(json) => Future.successful(json)
+            case Left(e)     => Future.failed(e)
 
   def getAllTeams()(using HeaderCarrier): Future[Seq[Team]] =
     given Reads[Seq[Team]] = readsAtTeams
