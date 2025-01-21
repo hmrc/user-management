@@ -35,8 +35,9 @@ class UsersRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = User.format,
   indexes        = Seq(
-                     IndexModel(Indexes.ascending("username"),      IndexOptions().unique(true).background(true)),
-                     IndexModel(Indexes.ascending("githubUsername"),IndexOptions().unique(false).background(true))
+                     IndexModel(Indexes.ascending("username")      , IndexOptions().unique(true).background(true)),
+                     IndexModel(Indexes.ascending("githubUsername"), IndexOptions().unique(false).background(true)),
+                     IndexModel(Indexes.ascending("isDeleted")     , IndexOptions().unique(false).background(true))
                    )
 ):
 
@@ -77,22 +78,26 @@ class UsersRepository @Inject()(
       )
     ).toFuture()
 
-  def search(searchTerms: Seq[String]): Future[Seq[User]] =
-    collection.find(
-      Filters.and(
-        searchTerms.map: term =>
-          val regex = s".*$term.*"
-          Filters.or(
-            Filters.regex("displayName"   , regex, "i")
-          , Filters.regex("familyName"    , regex, "i")
-          , Filters.regex("givenName"     , regex, "i")
-          , Filters.regex("username"      , regex, "i")
-          , Filters.regex("githubUsername", regex, "i")
-          , Filters.regex("teamNames"     , regex, "i")
-          )
-        : _*
+  def search(searchTerms: Seq[String], includeDeleted: Boolean): Future[Seq[User]] =
+    val searchFilters = searchTerms.map { term =>
+      val regex = s".*$term.*"
+      Filters.or(
+        Filters.regex("displayName"   , regex, "i"),
+        Filters.regex("familyName"    , regex, "i"),
+        Filters.regex("givenName"     , regex, "i"),
+        Filters.regex("username"      , regex, "i"),
+        Filters.regex("githubUsername", regex, "i"),
+        Filters.regex("teamNames"     , regex, "i")
       )
-    ).toFuture()
+    }
+
+    val filters = 
+      if !includeDeleted then
+        Filters.and(searchFilters :+ Filters.eq("isDeleted", false): _*)
+      else
+        Filters.and(searchFilters: _*)
+
+    collection.find(filters).toFuture()
 
   def findByUsername(username: String): Future[Option[User]] =
     collection

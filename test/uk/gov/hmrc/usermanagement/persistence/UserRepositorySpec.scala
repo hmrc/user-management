@@ -51,6 +51,7 @@ class UserRepositorySpec
           phoneNumber    = None,
           role           = "user",
           teamNames      = Seq("team1"),
+          isDeleted      = false 
         )
       ).toFuture().futureValue
 
@@ -66,7 +67,8 @@ class UserRepositorySpec
           githubUsername = None,
           phoneNumber    = None,
           role           = "user",
-          teamNames      = Seq("team2")
+          teamNames      = Seq("team2"),
+          isDeleted      = false 
         ),
         User(
           displayName    = Some("Jane Doe"),
@@ -79,7 +81,8 @@ class UserRepositorySpec
           githubUsername = None,
           phoneNumber    = None,
           role           = "user",
-          teamNames      = Seq("team3")
+          teamNames      = Seq("team3"),
+          isDeleted      = false 
         )
       )
 
@@ -103,7 +106,8 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         role           = "team-admin",
-        teamNames      = Seq("team1","team2")
+        teamNames      = Seq("team1","team2"),
+        isDeleted      = false 
         )
       
       val userTwo = User(
@@ -117,7 +121,8 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         role           = "user",
-        teamNames      = Seq.empty[String]
+        teamNames      = Seq.empty[String],
+        isDeleted      = false 
       )
 
       val userThree = User(
@@ -130,8 +135,9 @@ class UserRepositorySpec
         username       = "jane.doe",
         githubUsername = None,
         phoneNumber    = None,
-        role       = "user",
-        teamNames          = Seq.empty[String]
+        role           = "user",
+        teamNames      = Seq.empty[String],
+        isDeleted      = false 
       )
 
       val users = Seq(userOne, userTwo, userThree)
@@ -155,7 +161,8 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         role           = "team-admin",
-        teamNames      = Seq("team1")
+        teamNames      = Seq("team1"),
+        isDeleted      = false 
       )
 
       val userTwo = User(
@@ -169,7 +176,8 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         role           = "team-admin",
-        teamNames      = Seq("team1","team2")
+        teamNames      = Seq("team1","team2"),
+        isDeleted      = false 
       )
 
       val userThree = User(
@@ -183,7 +191,8 @@ class UserRepositorySpec
         githubUsername = None,
         phoneNumber    = None,
         role           = "team-admin",
-        teamNames      = Seq("team1","team2")
+        teamNames      = Seq("team1","team2"),
+        isDeleted      = false 
       )
 
       val users = Seq(userOne, userTwo, userThree)
@@ -207,7 +216,8 @@ class UserRepositorySpec
         githubUsername = Some("joe-github"),
         phoneNumber    = None,
         role           = "team-admin",
-        teamNames      = Seq("team1","team2")
+        teamNames      = Seq("team1","team2"),
+        isDeleted      = false
       )
 
       val userTwo = User(
@@ -221,7 +231,8 @@ class UserRepositorySpec
         githubUsername = Some("john-github"),
         phoneNumber    = None,
         role           = "team-admin",
-        teamNames      = Seq("team2")
+        teamNames      = Seq("team2"),
+        isDeleted      = false
       )
 
       val users = Seq(userOne, userOne.copy(username = "joe.bloggs1"), userTwo)
@@ -245,7 +256,8 @@ class UserRepositorySpec
       githubUsername = None,
       phoneNumber    = None,
       role           = "team-admin",
-      teamNames      = Seq("team1", "team2")
+      teamNames      = Seq("team1", "team2"),
+      isDeleted      = false 
     )
 
     val userTwo = User(
@@ -259,7 +271,8 @@ class UserRepositorySpec
       githubUsername = None,
       phoneNumber    = None,
       role           = "team-admin",
-      teamNames      = Seq("team2")
+      teamNames      = Seq("team2"),
+      isDeleted      = false 
     )
 
     "return user information for a given username" in:
@@ -284,7 +297,8 @@ class UserRepositorySpec
       githubUsername = Some("joeGithub"),
       phoneNumber    = None,
       role           = "team-admin",
-      teamNames      = Seq("team1", "team2")
+      teamNames      = Seq("team1", "team2"),
+      isDeleted      = false 
     )
 
     val userTwo      = User(
@@ -298,23 +312,43 @@ class UserRepositorySpec
       githubUsername = None,
       phoneNumber    = None,
       role           = "team-admin",
-      teamNames      = Seq("team2")
+      teamNames      = Seq("team2"),
+      isDeleted      = false 
     )
 
-    "search for a user using a search term" in:
-      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
-      repository.search(Seq("Joe")).futureValue shouldBe List(userOne)
+    val deletedUser      = User(
+      displayName    = Some("Deleted User"),
+      familyName     = "User",
+      givenName      = Some("Deleted"),
+      organisation   = Some("MDTP"),
+      primaryEmail   = "deleted.user@gmail.com",
+      slackId        = None,
+      username       = "deleted.user",
+      githubUsername = None,
+      phoneNumber    = None,
+      role           = "team-admin",
+      teamNames      = Seq("team2"),
+      isDeleted      = true 
+    )
 
-    "search for a user using multiple search terms" in :
-      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
-      repository.search(Seq("joeGithub", "Bloggs", "team1")).futureValue shouldBe List(userOne)
+    "search for an active user using a search term" in:
+      repository.collection.insertMany(Seq(userOne, userTwo, deletedUser)).toFuture().futureValue
+      repository.search(Seq("Joe"), includeDeleted = false).futureValue shouldBe List(userOne)
 
-    "search for a user with case insensitive search term" in :
-      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
-      repository.search(Seq("joe")).futureValue shouldBe List(userOne)
+    "search for an active user using multiple search terms" in :
+      repository.collection.insertMany(Seq(userOne, userTwo, deletedUser)).toFuture().futureValue
+      repository.search(Seq("joeGithub", "Bloggs", "team1"), includeDeleted = false).futureValue shouldBe List(userOne)
 
-    "return all users when no there is no search terms" in :
-      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
-      repository.search(Seq("")).futureValue shouldBe List(userOne, userTwo)
+    "search for an active user with case insensitive search term" in :
+      repository.collection.insertMany(Seq(userOne, userTwo, deletedUser)).toFuture().futureValue
+      repository.search(Seq("joe"), includeDeleted = false).futureValue shouldBe List(userOne)
+
+    "return all active users when no there is no search terms" in :
+      repository.collection.insertMany(Seq(userOne, userTwo, deletedUser)).toFuture().futureValue
+      repository.search(Seq(""), includeDeleted = false).futureValue shouldBe List(userOne, userTwo)
+
+    "return deleted users when specifically requested" in :
+      repository.collection.insertMany(Seq(userOne, userTwo, deletedUser)).toFuture().futureValue
+      repository.search(Seq(""), includeDeleted = true).futureValue shouldBe List(userOne, userTwo, deletedUser)
 
 end UserRepositorySpec

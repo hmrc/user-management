@@ -4,7 +4,7 @@ GET        /users                   uk.gov.hmrc.usermanagement.controllers.UserM
 GET        /users/:user             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserByUsername(user)
 GET        /users/:user/access      uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUserAccess(user)
 POST       /users/:user/vpn         uk.gov.hmrc.usermanagement.controllers.UserManagementController.requestNewVpnCert(user)
-GET        /users-search            uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUsersByQuery(query: Seq[String])
+GET        /users-search            uk.gov.hmrc.usermanagement.controllers.UserManagementController.getUsersByQuery(query: Seq[String], includeDeleted: Boolean ?= false)
 
 POST       /create-user             uk.gov.hmrc.usermanagement.controllers.UserManagementController.createUser
 POST       /edit-user-access        uk.gov.hmrc.usermanagement.controllers.UserManagementController.editUserAccess

@@ -65,7 +65,7 @@ class UmpConnectorSpec
     "parsing a valid response" should:
       "return a sequence of Users" in new Setup:
         stubFor(
-          get(urlEqualTo("/v2/organisations/users"))
+          get(urlEqualTo("/v2/organisations/users?includeDeleted=true"))
             .willReturn(
               aResponse()
                 .withStatus(200)
@@ -76,14 +76,14 @@ class UmpConnectorSpec
         val res = userManagementConnector.getAllUsers().futureValue
 
         res should contain theSameElementsAs Seq(
-            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String]),
-            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String])
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], isDeleted = false),
+            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false)
           )
 
     "parsing an invalid JSON response" should:
       "throw a JSValidationException" in new Setup:
         stubFor(
-          get(urlEqualTo("/v2/organisations/users"))
+          get(urlEqualTo("/v2/organisations/users?includeDeleted=true"))
             .willReturn(
               aResponse()
                 .withStatus(200)
@@ -97,7 +97,7 @@ class UmpConnectorSpec
     "it receives a non 200 status code response" should:
       "return an UpstreamErrorResponse" in new Setup:
         stubFor(
-          get(urlEqualTo("/v2/organisations/users"))
+          get(urlEqualTo("/v2/organisations/users?includeDeleted=true"))
             .willReturn(
               aResponse()
                 .withStatus(500)
@@ -109,7 +109,7 @@ class UmpConnectorSpec
     "the response contains non-human users" should:
       "filter out any non-human users" in new Setup:
         stubFor(
-          get(urlEqualTo("/v2/organisations/users"))
+          get(urlEqualTo("/v2/organisations/users?includeDeleted=true"))
             .willReturn(
               aResponse()
                 .withStatus(200)
@@ -121,8 +121,8 @@ class UmpConnectorSpec
 
         res.length shouldBe 2
         res should contain theSameElementsAs Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String]),
-          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = None,         primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None,         phoneNumber = None,                role="user", teamNames = Seq.empty[String])
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], isDeleted = false),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = None,         primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None,         phoneNumber = None,                role="user", teamNames = Seq.empty[String], isDeleted = false)
         )
 
   "createUser" when :

@@ -30,7 +30,8 @@ case class User(
   githubUsername: Option[String],
   phoneNumber   : Option[String],
   role          : String,
-  teamNames     : Seq[String]
+  teamNames     : Seq[String],
+  isDeleted     : Boolean
 )
 
 object User:
@@ -46,4 +47,5 @@ object User:
     ~ ( __ \ "phoneNumber"   ).formatNullable[String]
     ~ ( __ \ "role"          ).format[String]
     ~ ( __ \ "teamNames"     ).format[Seq[String]]
+    ~ ( __ \ "isDeleted"     ).formatWithDefault[Boolean](false)
     )(User.apply, pt => Tuple.fromProductTyped(pt))
