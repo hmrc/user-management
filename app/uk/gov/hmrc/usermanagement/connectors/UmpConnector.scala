@@ -77,7 +77,7 @@ class UmpConnector @Inject()(
     for
       token <- getUserManagementUmpToken()
       resp  <- httpClientV2
-                 .get(url"$userManagementBaseUrl/v2/organisations/users")
+                 .get(url"$userManagementBaseUrl/v2/organisations/users?includeDeleted=true")
                  .setHeader(token.asHeaders():_*)
                  .execute[Seq[User]]
     yield
@@ -223,6 +223,7 @@ object UmpConnector:
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
     ~ ( __ \ "role"         ).readWithDefault[String]("user")
     ~ ( __ \ "teamNames"    ).readWithDefault[Seq[String]](Seq.empty[String])
+    ~ ( __ \ "isDeleted"    ).readWithDefault[Boolean](false)
     )(User.apply _)
 
   val readsAtUsers: Reads[Seq[User]] =
