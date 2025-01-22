@@ -76,8 +76,15 @@ class UmpConnectorSpec
         val res = userManagementConnector.getAllUsers().futureValue
 
         res should contain theSameElementsAs Seq(
-            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"), organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], isDeleted = false),
-            User(displayName = Some("Jane Doe"), familyName = "Doe", givenName = Some("Jane"), organisation = None, primaryEmail = "jane.doe@gmail.com", slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false)
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs" , givenName = Some("Joe")    , organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
+            User(displayName = Some("Jane Doe")  , familyName = "Doe"    , givenName = Some("Jane")   , organisation = None        , primaryEmail = "jane.doe@gmail.com"  , slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
+            User(displayName = Some("service")   , familyName = "service", givenName = Some("service"), organisation = None        , primaryEmail = "service@gmail.com"   , slackId = None, username = "service-account", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("platops")   , familyName = "plat"   , givenName = Some("ops")    , organisation = None        , primaryEmail = "platops@gmail.com"   , slackId = None, username = "PLaToPs", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("build")     , familyName = "b"      , givenName = Some("b")      , organisation = None        , primaryEmail = "b@gmail.com"   , slackId = None, username = "BUILD", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("deploy")    , familyName = "dep"    , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "DePlOy", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("ddcops")    , familyName = "d"      , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "ddcops_", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("deskpro")   , familyName = "d"      , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "Deskpro", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("platSEC")   , familyName = "p"      , givenName = Some("p")      , organisation = None        , primaryEmail = "p@gmail.com"         , slackId = None, username = "platSEC", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
           )
 
     "parsing an invalid JSON response" should:
@@ -105,25 +112,6 @@ class UmpConnectorSpec
         )
         val res = userManagementConnector.getAllUsers().failed.futureValue
         res shouldBe a [UpstreamErrorResponse]
-
-    "the response contains non-human users" should:
-      "filter out any non-human users" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/users?includeDeleted=true"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("non-human-users.json")
-            )
-        )
-
-        val res = userManagementConnector.getAllUsers().futureValue
-
-        res.length shouldBe 2
-        res should contain theSameElementsAs Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], isDeleted = false),
-          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = None,         primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None,         phoneNumber = None,                role="user", teamNames = Seq.empty[String], isDeleted = false)
-        )
 
   "createUser" when :
     "parsing a valid response" should :
@@ -498,31 +486,6 @@ class UmpConnectorSpec
 
         val res = userManagementConnector.getTeamWithMembers("PlatOps").failed.futureValue
         res shouldBe a [UpstreamErrorResponse]
-
-    "the response contains non-human members" should:
-      "filter out the non-humans" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("non-human-members-of-team.json")
-            )
-        )
-
-        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
-
-        res shouldBe Some(Team(
-          members           = Seq(
-                                Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"),
-                                Member(username = "jane.doe",   displayName = Some("Jane Doe"),   role = "user")
-                              ),
-          teamName          = "PlatOps",
-          description       = None,
-          documentation     = None,
-          slack             = Some("https://slack.com"),
-          slackNotification = None
-        ))
 
   "requestNewVpnCert" when :
     "parsing a valid response" should :

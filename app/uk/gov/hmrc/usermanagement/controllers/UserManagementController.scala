@@ -59,10 +59,14 @@ class UserManagementController @Inject()(
       .map:
         _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
 
-  def getUsersByQuery(query: Seq[String], includeDeleted: Boolean): Action[AnyContent] = Action.async:
+  def getUsersByQuery(
+    query          : Seq[String],
+    includeDeleted : Boolean,
+    includeNonHuman: Boolean
+  ): Action[AnyContent] = Action.async:
     if   query.length > 3 // cap number of searchable terms at 3
     then Future.successful(BadRequest(toJson(ErrorResponse(BAD_REQUEST, "Too many search terms - maximum of 3"))))
-    else usersRepository.search(query, includeDeleted)
+    else usersRepository.search(query, includeDeleted, includeNonHuman)
            .map: res =>
              Ok(Json.toJson(res))
 

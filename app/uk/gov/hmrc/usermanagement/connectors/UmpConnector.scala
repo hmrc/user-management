@@ -81,8 +81,9 @@ class UmpConnector @Inject()(
                  .setHeader(token.asHeaders():_*)
                  .execute[Seq[User]]
     yield
-      resp.filterNot: user =>
-        nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_))
+      resp.map:
+        case user if nonHumanIdentifiers.exists(user.username.toLowerCase.contains(_)) => user.copy(isNonHuman = true)
+        case user => user
 
   def createUser(createUserRequest: CreateUserRequest)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
@@ -224,6 +225,7 @@ object UmpConnector:
     ~ ( __ \ "role"         ).readWithDefault[String]("user")
     ~ ( __ \ "teamNames"    ).readWithDefault[Seq[String]](Seq.empty[String])
     ~ ( __ \ "isDeleted"    ).readWithDefault[Boolean](false)
+    ~ ( __ \ "isNonHuman"   ).readWithDefault[Boolean](false)
     )(User.apply _)
 
   val readsAtUsers: Reads[Seq[User]] =
