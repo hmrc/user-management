@@ -37,7 +37,8 @@ class UsersRepository @Inject()(
   indexes        = Seq(
                      IndexModel(Indexes.ascending("username")      , IndexOptions().unique(true).background(true)),
                      IndexModel(Indexes.ascending("githubUsername"), IndexOptions().unique(false).background(true)),
-                     IndexModel(Indexes.ascending("isDeleted")     , IndexOptions().unique(false).background(true))
+                     IndexModel(Indexes.ascending("isDeleted")     , IndexOptions().unique(false).background(true)),
+                     IndexModel(Indexes.ascending("isNonHuman")    , IndexOptions().unique(false).background(true))
                    )
 ):
 
@@ -78,8 +79,12 @@ class UsersRepository @Inject()(
       )
     ).toFuture()
 
-  def search(searchTerms: Seq[String], includeDeleted: Boolean): Future[Seq[User]] =
-    val searchFilters = searchTerms.map { term =>
+  def search(
+    searchTerms    : Seq[String],
+    includeDeleted : Boolean,
+    includeNonHuman: Boolean
+  ): Future[Seq[User]] =
+    val searchFilters = searchTerms.map: term =>
       val regex = s".*$term.*"
       Filters.or(
         Filters.regex("displayName"   , regex, "i"),
@@ -89,15 +94,15 @@ class UsersRepository @Inject()(
         Filters.regex("githubUsername", regex, "i"),
         Filters.regex("teamNames"     , regex, "i")
       )
-    }
 
-    val filters = 
-      if !includeDeleted then
-        Filters.and(searchFilters :+ Filters.eq("isDeleted", false): _*)
-      else
-        Filters.and(searchFilters: _*)
+    val additionalFilters = Seq(
+      Option.when(!includeDeleted)(Filters.eq("isDeleted", false)),
+      Option.when(!includeNonHuman)(Filters.eq("isNonHuman", false))
+    ).flatten
 
-    collection.find(filters).toFuture()
+    collection
+      .find(Filters.and((searchFilters ++ additionalFilters): _*))
+      .toFuture()
 
   def findByUsername(username: String): Future[Option[User]] =
     collection

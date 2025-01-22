@@ -31,7 +31,8 @@ case class User(
   phoneNumber   : Option[String],
   role          : String,
   teamNames     : Seq[String],
-  isDeleted     : Boolean
+  isDeleted     : Boolean,
+  isNonHuman    : Boolean
 )
 
 object User:
@@ -48,4 +49,5 @@ object User:
     ~ ( __ \ "role"          ).format[String]
     ~ ( __ \ "teamNames"     ).format[Seq[String]]
     ~ ( __ \ "isDeleted"     ).formatWithDefault[Boolean](false)
+    ~ ( __ \ "isNonHuman"    ).formatWithDefault[Boolean](false)
     )(User.apply, pt => Tuple.fromProductTyped(pt))
