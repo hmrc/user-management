@@ -63,14 +63,14 @@ class DataRefreshServiceSpec
       when(umpConnector.getTeamWithMembers("team1"))
         .thenReturn(Future.successful(Some(
           Team(
-            members = Seq(Member("joe.bloggs", Some("Joe Bloggs"), "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
+            members = Seq(Member("joe.bloggs", Some("Joe Bloggs"), "user", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
       when(umpConnector.getTeamWithMembers("team2"))
         .thenReturn(Future.successful(Some(
           Team(
-            members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
+            members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
@@ -90,8 +90,8 @@ class DataRefreshServiceSpec
       ))
 
       verify(teamsRepository).putAll(Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")),       teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "jane.doe",   displayName = Some("Jane Doe"),   role = "team-admin")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user"      , isNonHuman = false)),       teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "jane.doe"  , displayName = Some("Jane Doe")  , role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
 
@@ -112,14 +112,14 @@ class DataRefreshServiceSpec
       when(umpConnector.getTeamWithMembers("team1"))
         .thenReturn(Future.successful(Some(
           Team(
-            members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin"), Member("joe.bloggs", Some("Joe Bloggs"), "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
+            members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin", isNonHuman = false), Member("joe.bloggs", Some("Joe Bloggs"), "user", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
       when(umpConnector.getTeamWithMembers("team2"))
         .thenReturn(Future.successful(Some(
           Team(
-            members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin"), Member("joe.bloggs", Some("Joe Bloggs"), "user")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
+            members = Seq(Member("jane.doe", Some("Jane Doe"), "team-admin", isNonHuman = false), Member("joe.bloggs", Some("Joe Bloggs"), "user", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
           )
         )))
 
@@ -167,8 +167,8 @@ class DataRefreshServiceSpec
       ))
 
       verify(teamsRepository).putAll(Seq(
-        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "team-admin"), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "team-admin"), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user")), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "team-admin", isNonHuman = false), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), role = "team-admin", isNonHuman = false), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "user", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
 end DataRefreshServiceSpec

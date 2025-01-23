@@ -31,18 +31,19 @@ case class Team(
 object Team:
   val format: OFormat[Team] =
     given Format[Member] = Member.format
-    ( (__ \ "members"         ).format[Seq[Member]]
-    ~ (__ \"teamName"         ).format[String]
-    ~ (__ \"description"      ).formatNullable[String]
-    ~ (__ \"documentation"    ).formatNullable[String]
-    ~ (__ \"slack"            ).formatNullable[String]
-    ~ (__ \"slackNotification").formatNullable[String]
+    ( (__ \ "members"          ).format[Seq[Member]]
+    ~ (__ \ "teamName"         ).format[String]
+    ~ (__ \ "description"      ).formatNullable[String]
+    ~ (__ \ "documentation"    ).formatNullable[String]
+    ~ (__ \ "slack"            ).formatNullable[String]
+    ~ (__ \ "slackNotification").formatNullable[String]
     )(Team.apply, pt => Tuple.fromProductTyped(pt))
   
 case class Member(
   username   : String,
   displayName: Option[String],
-  role       : String
+  role       : String,
+  isNonHuman : Boolean
 )
 
 object Member:
@@ -50,4 +51,5 @@ object Member:
     ( (__ \ "username"   ).format[String]
     ~ (__ \ "displayName").formatNullable[String]
     ~ (__ \ "role"       ).format[String]
+    ~ (__ \ "isNonHuman" ).formatWithDefault[Boolean](false)
     )(Member.apply, pt => Tuple.fromProductTyped(pt))
