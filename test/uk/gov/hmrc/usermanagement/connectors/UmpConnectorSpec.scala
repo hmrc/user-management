@@ -410,7 +410,7 @@ class UmpConnectorSpec
 
   "getMembersForTeam" when:
     "parsing a valid response" should:
-      "return a Team" in new Setup:
+      "return a Team with non human users flagged" in new Setup:
         stubFor(
           get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
             .willReturn(
@@ -424,8 +424,15 @@ class UmpConnectorSpec
 
         res shouldBe Some(Team(
           members           = Seq(
-                                Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), role = "team_admin"),
-                                Member(username = "jane.doe",   displayName = Some("Jane Doe"),   role = "user")
+                                Member(username = "joe.bloggs"     , displayName = Some("Joe Bloggs"), role = "team_admin", isNonHuman = false),
+                                Member(username = "jane.doe"       , displayName = Some("Jane Doe")  , role = "user"      , isNonHuman = false),
+                                Member(username = "service-account", displayName = Some("service")   , role = "user"      , isNonHuman = true ),
+                                Member(username = "PLaToPs"        , displayName = Some("platops")   , role = "user"      , isNonHuman = true ),
+                                Member(username = "BUILD"          , displayName = Some("build")     , role = "user"      , isNonHuman = true ),
+                                Member(username = "DePlOy"         , displayName = Some("deploy")    , role = "user"      , isNonHuman = true ),
+                                Member(username = "ddcops_"        , displayName = Some("ddcops")    , role = "user"      , isNonHuman = true ),
+                                Member(username = "Deskpro"        , displayName = Some("deskpro")   , role = "user"      , isNonHuman = true ),
+                                Member(username = "platSEC"        , displayName = Some("platSEC")   , role = "user"      , isNonHuman = true ),
                               ),
           teamName          = "PlatOps",
           description       = None,

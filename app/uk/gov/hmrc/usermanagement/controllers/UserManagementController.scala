@@ -49,10 +49,14 @@ class UserManagementController @Inject()(
       .map: res =>
         Ok(Json.toJson(res.sortBy(_.username)))
 
-  val getAllTeams: Action[AnyContent] = Action.async:
+  def getAllTeams(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
     teamsRepository.findAll()
       .map: res =>
-        Ok(Json.toJson(res.sortBy(_.teamName)))
+        if includeNonHuman then
+          Ok(Json.toJson(res.sortBy(_.teamName)))
+        else
+          val filtered = res.map(team => team.copy(members = team.members.filterNot(_.isNonHuman)))
+          Ok(Json.toJson(filtered))
 
   def getUserByUsername(username: String): Action[AnyContent] = Action.async:
     usersRepository.findByUsername(username)
@@ -100,10 +104,16 @@ class UserManagementController @Inject()(
         case JsError(errors) =>
           Future.successful(BadRequest(s"Invalid JSON, unable to process due to errors: $errors"))
 
-  def getTeamByTeamName(teamName: String): Action[AnyContent] = Action.async:
+  def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async:
     teamsRepository.findByTeamName(teamName)
       .map:
-        _.fold(NotFound: Result)(res => Ok(Json.toJson(res)))
+        _.fold(NotFound: Result): res =>
+          if includeNonHuman then
+            Ok(Json.toJson(res))
+          else
+            val filtered = res.copy(members = res.members.filterNot(_.isNonHuman))
+            Ok(Json.toJson(filtered))
+
 
   def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:
     implicit request =>

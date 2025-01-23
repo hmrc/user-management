@@ -163,8 +163,9 @@ class UmpConnector @Inject()(
                        s"This indicates the team does not exist within UMP.")
                      None
     yield resp.map: team =>
-      team.copy(members = team.members.filterNot: member =>
-        nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_))
+      team.copy(members = team.members.map:
+        case member if nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_)) => member.copy(isNonHuman = true)
+        case member => member
       )
   
   def requestNewVpnCert(username: String)(using HeaderCarrier): Future[JsValue] =
