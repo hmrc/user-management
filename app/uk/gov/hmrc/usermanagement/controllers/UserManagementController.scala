@@ -94,7 +94,7 @@ class UserManagementController @Inject()(
                   case UserAttribute.Github       => existingUser.copy(githubUsername = Some(editRequest.value))
                   case UserAttribute.Organisation => existingUser.copy(organisation   = Some(editRequest.value))
                   case UserAttribute.PhoneNumber  => existingUser.copy(phoneNumber    = Some(editRequest.value))
-                usersRepository.putAll(Seq(updatedUser)).map(_ => Accepted)
+                usersRepository.updateOne(updatedUser).map(_ => Accepted)
             case None =>
               umpConnector.editUserDetails(editRequest).map:_ =>
                 logger.info(s"Updated successfully on UMP but username '${editRequest.username}' not found in mongo. Awaiting scheduler for mongo update.")
