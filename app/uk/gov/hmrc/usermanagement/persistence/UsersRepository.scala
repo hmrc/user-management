@@ -68,6 +68,16 @@ class UsersRepository @Inject()(
                      else collection.bulkWrite(bulkUpdates).toFuture().map(_=> ())
     yield ()
 
+  def updateOne(user: User): Future[Unit] =
+    collection
+      .replaceOne(
+        filter      = Filters.equal("username" , user.username),
+        replacement = user,
+        options     = ReplaceOptions().upsert(true)
+      )
+      .toFuture()
+      .map(_ => ())
+
   def find(
     team  : Option[String] = None,
     github: Option[String] = None
