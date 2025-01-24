@@ -97,6 +97,18 @@ class UmpConnector @Inject()(
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
 
+  def editUserDetails(editUserDetailsRequest: EditUserDetailsRequest)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .put(url"$userManagementBaseUrl/v2/organisations/users/${editUserDetailsRequest.username}/${editUserDetailsRequest.attribute.name}")
+          .setHeader(token.asHeaders():_*)
+          .withBody(Json.toJson(editUserDetailsRequest)(EditUserDetailsRequest.writes))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e) => Future.failed(e)
+
   def editUserAccess(editUserAccessRequest: EditUserAccessRequest)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>
