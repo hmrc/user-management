@@ -82,6 +82,26 @@ class UserManagementController @Inject()(
         case JsError(errors) =>
           Future.successful(BadRequest(s"Invalid JSON, unable to process due to errors: $errors"))
 
+  def editUserDetails: Action[JsValue] = Action.async(parse.json):
+    implicit request =>
+      request.body.validate[EditUserDetailsRequest](EditUserDetailsRequest.reads) match
+        case JsSuccess(editRequest, _) =>
+          usersRepository.findByUsername(editRequest.username).flatMap:
+            case Some(existingUser) =>
+              umpConnector.editUserDetails(editRequest).flatMap: _ =>
+                val updatedUser = editRequest.attribute match
+                  case UserAttribute.DisplayName  => existingUser.copy(displayName    = Some(editRequest.value))
+                  case UserAttribute.Github       => existingUser.copy(githubUsername = Some(editRequest.value))
+                  case UserAttribute.Organisation => existingUser.copy(organisation   = Some(editRequest.value))
+                  case UserAttribute.PhoneNumber  => existingUser.copy(phoneNumber    = Some(editRequest.value))
+                usersRepository.putAll(Seq(updatedUser)).map(_ => Accepted)
+            case None =>
+              umpConnector.editUserDetails(editRequest).map:_ =>
+                logger.info(s"Updated successfully on UMP but username '${editRequest.username}' not found in mongo. Awaiting scheduler for mongo update.")
+                Accepted
+        case JsError(errors) =>
+          Future.successful(BadRequest(s"Invalid JSON, unable to process due to errors: $errors"))
+
   def editUserAccess: Action[JsValue] = Action.async(parse.json):
     implicit request =>
       request.body.validate[EditUserAccessRequest](EditUserAccessRequest.reads) match

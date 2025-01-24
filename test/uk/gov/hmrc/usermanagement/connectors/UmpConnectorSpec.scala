@@ -179,6 +179,72 @@ class UmpConnectorSpec
 
         res shouldBe a [UpstreamErrorResponse]
 
+  "editUserDetails" when :
+    "parsing a valid response" should :
+      "return unit" in new Setup:
+        stubFor(
+          put(urlEqualTo("/v2/organisations/users/joe.bloggs/displayName"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"status": "OK"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.editUserDetails(editUserDetailsRequest).futureValue
+
+        res shouldBe()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          put(urlEqualTo("/v2/organisations/users/joe.bloggs/displayName"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+                .withBody("""{"reason": "Forbidden"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserDetails(editUserDetailsRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserDetails(editUserDetailsRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
   "resetUserLdapPassword" when :
     "parsing a valid response" should :
       "return a ticket number" in new Setup:
@@ -577,6 +643,13 @@ trait Setup:
       isReturningUser = false,
       isTransitoryUser = false,
       isExistingLDAPUser = false
+    )
+
+  val editUserDetailsRequest: EditUserDetailsRequest =
+    EditUserDetailsRequest(
+      username = "joe.bloggs",
+      attribute = UserAttribute.DisplayName,
+      value = "joseph.bloggs"
     )
 
   val username = "john.doe"
