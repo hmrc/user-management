@@ -34,7 +34,10 @@ object EditUserDetailsRequest:
 
   val writes: OWrites[EditUserDetailsRequest] =
     OWrites: request =>
-      Json.obj(request.attribute.name -> request.value)
+      val finalValue = request.attribute match
+        case UserAttribute.Github => s"https://github.com/${request.value}"
+        case _                    => request.value
+      Json.obj(request.attribute.name -> finalValue)
 
 enum UserAttribute(val name: String):
   case DisplayName  extends UserAttribute("displayName" )
