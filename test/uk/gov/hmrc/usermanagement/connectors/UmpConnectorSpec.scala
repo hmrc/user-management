@@ -181,7 +181,7 @@ class UmpConnectorSpec
 
   "editUserDetails" when :
     "parsing a valid response" should :
-      "return unit" in new Setup:
+      "pass the correct payload and return unit" in new Setup:
         stubFor(
           put(urlEqualTo("/v2/organisations/users/joe.bloggs/displayName"))
             .willReturn(
@@ -200,10 +200,58 @@ class UmpConnectorSpec
             )
         )
 
+        val actualEditUserDetailsRequest =
+          """{"displayName" : "Joseph Bloggs"}"""
+
         val res: Unit =
           userManagementConnector.editUserDetails(editUserDetailsRequest).futureValue
 
         res shouldBe()
+
+        verify(
+          putRequestedFor(urlPathEqualTo("/v2/organisations/users/joe.bloggs/displayName"))
+            .withRequestBody(equalToJson(actualEditUserDetailsRequest))
+        )
+        
+    "given a request with a github attribute" should:
+      "append the github url to the value and return Unit when UMP response is 200" in :
+        val editGithubRequest =
+          EditUserDetailsRequest(
+            username = "joe.bloggs",
+            attribute = UserAttribute.Github,
+            value = "JoeBloggs"
+          )
+
+        val actualEditGithubRequest =
+          """{"github" : "https://github.com/JoeBloggs"}"""
+
+        stubFor(
+          put(urlEqualTo("/v2/organisations/users/joe.bloggs/github"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"status": "OK"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.editUserDetails(editGithubRequest).futureValue
+
+        res shouldBe()
+
+        verify(
+          putRequestedFor(urlPathEqualTo("/v2/organisations/users/joe.bloggs/github"))
+            .withRequestBody(equalToJson(actualEditGithubRequest))
+        )
 
     "it receives a non 2xx status code response" should :
       "return an UpstreamErrorResponse" in new Setup:
@@ -649,7 +697,7 @@ trait Setup:
     EditUserDetailsRequest(
       username = "joe.bloggs",
       attribute = UserAttribute.DisplayName,
-      value = "joseph.bloggs"
+      value = "Joseph Bloggs"
     )
 
   val username = "john.doe"
