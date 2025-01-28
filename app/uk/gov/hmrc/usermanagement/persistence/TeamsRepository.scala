@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.model.{Collation, CollationStrength, Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions, DeleteManyModel, DeleteOptions}
+import org.mongodb.scala.model.*
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.Team
@@ -72,6 +72,8 @@ class TeamsRepository @Inject()(
   def findAll(): Future[Seq[Team]] =
     collection
       .find()
+      .sort(Sorts.ascending("teamName"))
+      .collation(caseInsensitiveCollation)
       .toFuture()
 
   def findByTeamName(teamName: String): Future[Option[Team]] =
