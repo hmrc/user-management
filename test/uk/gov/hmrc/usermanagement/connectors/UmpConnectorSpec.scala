@@ -383,7 +383,7 @@ class UmpConnectorSpec
         val res: Unit =
           userManagementConnector.editUserAccess(editUserAccessRequest).futureValue
 
-        res shouldBe()
+        res shouldBe ()
 
     "it receives a non 2xx status code response" should :
       "return an UpstreamErrorResponse" in new Setup:
@@ -610,7 +610,7 @@ class UmpConnectorSpec
 
   "requestNewVpnCert" when :
     "parsing a valid response" should :
-      "return unit" in new Setup:
+      "return the created ticket number" in new Setup:
         stubFor(
           post(urlEqualTo("/v2/vpn/create_certificate_request/tom.test"))
             .willReturn(
@@ -658,6 +658,31 @@ class UmpConnectorSpec
           userManagementConnector.requestNewVpnCert("tom.test").failed.futureValue
 
         res shouldBe a [UpstreamErrorResponse]
+  
+  "addUserToGithubTeam" when :
+    "parsing a valid response" should :
+      "return Unit" in new Setup:
+        stubFor(
+          put(urlEqualTo("/v2/github/teams/PlatOps/members/tom.test"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.addUserToGithubTeam("tom.test", "PlatOps").futureValue
+
+        res shouldBe ()
 end UmpConnectorSpec
 
 trait Setup:

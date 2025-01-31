@@ -190,6 +190,17 @@ class UmpConnector @Inject()(
           .flatMap:
             case Right(json) => Future.successful(json)
             case Left(e)     => Future.failed(e)
+
+  def addUserToGithubTeam(username: String, team: String)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .put(url"$userManagementBaseUrl/v2/github/teams/$team/members/$username")
+          .setHeader(token.asHeaders():_*)
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e)  => Future.failed(e)
 end UmpConnector
 
 object UmpConnector:

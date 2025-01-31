@@ -138,4 +138,13 @@ class UserManagementController @Inject()(
   def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:
     implicit request =>
       umpConnector.requestNewVpnCert(username).map(json => Created(json))
+
+  def addUserToGithubTeam: Action[JsValue] = Action.async(parse.json):
+    implicit request =>
+      request.body.validate[AddUserToGithubTeamRequest](AddUserToGithubTeamRequest.reads) match
+        case JsSuccess(req, path) =>
+          umpConnector.addUserToGithubTeam(req.username, req.team).map(_ => Ok)
+        case JsError(errors) =>
+          Future.successful(BadRequest(s"Invalid JSON, unable to process due to errors: $errors"))
+
 end UserManagementController
