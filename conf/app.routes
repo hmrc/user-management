@@ -10,6 +10,7 @@ POST       /create-user             uk.gov.hmrc.usermanagement.controllers.UserM
 PUT        /edit-user-details       uk.gov.hmrc.usermanagement.controllers.UserManagementController.editUserDetails
 POST       /edit-user-access        uk.gov.hmrc.usermanagement.controllers.UserManagementController.editUserAccess
 POST       /reset-ldap-password     uk.gov.hmrc.usermanagement.controllers.UserManagementController.resetUserLdapPassword
+PUT        /reset-google-password   uk.gov.hmrc.usermanagement.controllers.UserManagementController.resetUserGooglePassword
 POST       /add-user-to-github-team uk.gov.hmrc.usermanagement.controllers.UserManagementController.addUserToGithubTeam
 
 GET        /teams                   uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams(includeNonHuman: Boolean ?= false)

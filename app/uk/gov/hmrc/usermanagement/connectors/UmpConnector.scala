@@ -109,6 +109,18 @@ class UmpConnector @Inject()(
             case Right(_) => Future.unit
             case Left(e) => Future.failed(e)
 
+  def resetUserGooglePassword(resetGooglePassword: ResetGooglePassword)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .put(url"$userManagementBaseUrl/v2/googleapps/users/${resetGooglePassword.username}/password")
+          .setHeader(token.asHeaders():_*)
+          .withBody(Json.toJson(resetGooglePassword)(ResetGooglePassword.writes))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e) => Future.failed(e)
+
   def editUserAccess(editUserAccessRequest: EditUserAccessRequest)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>
