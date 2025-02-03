@@ -25,6 +25,7 @@ import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.Application
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.*
+import uk.gov.hmrc.crypto.Sensitive.SensitiveString
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.usermanagement.model.*
@@ -290,6 +291,72 @@ class UmpConnectorSpec
 
         val res: Throwable =
           userManagementConnector.editUserDetails(editUserDetailsRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+  "resetUserGooglePassword" when :
+    "parsing a valid response" should :
+      "return a ticket number" in new Setup:
+        stubFor(
+          put(urlEqualTo(s"/v2/googleapps/users/$username/password"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"status": "OK"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.resetUserGooglePassword(resetGooglePassword).futureValue
+
+        res shouldBe()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          put(urlEqualTo(s"/v2/googleapps/users/$username/password"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+                .withBody("""{"message": "User not found"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.resetUserGooglePassword(resetGooglePassword).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.resetUserGooglePassword(resetGooglePassword).failed.futureValue
 
         res shouldBe a[UpstreamErrorResponse]
 
@@ -746,4 +813,10 @@ trait Setup:
     ResetLdapPassword(
       username = username,
       email = "test@test.com"
+    )
+
+  val resetGooglePassword: ResetGooglePassword =
+    ResetGooglePassword(
+      username = username,
+      password = SensitiveString("password")
     )

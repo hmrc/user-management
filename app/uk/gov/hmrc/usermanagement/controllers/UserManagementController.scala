@@ -113,6 +113,11 @@ class UserManagementController @Inject()(
       implicit request =>
         umpConnector.resetUserLdapPassword(request.body).map(json => Ok(json))
 
+  def resetUserGooglePassword: Action[ResetGooglePassword] =
+    Action.async(parse.json[ResetGooglePassword](ResetGooglePassword.reads)):
+      implicit request =>
+        umpConnector.resetUserGooglePassword(request.body).map(_ => Accepted)
+
   def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async:
     teamsRepository.findByTeamName(teamName)
       .map:
