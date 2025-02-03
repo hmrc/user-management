@@ -138,4 +138,13 @@ class UserManagementController @Inject()(
       implicit request =>
         umpConnector.addUserToGithubTeam(request.body.username, request.body.team).map(_ => Ok)
 
+  def addUserToTeam: Action[ManageTeamMembersRequest] =
+    Action.async(parse.json[ManageTeamMembersRequest](ManageTeamMembersRequest.reads)):
+      implicit request =>
+        umpConnector.addUserToTeam(request.body.team, request.body.username).map(_ => Ok)
+
+  def removeUserFromTeam: Action[ManageTeamMembersRequest] =
+    Action.async(parse.json[ManageTeamMembersRequest](ManageTeamMembersRequest.reads)):
+      implicit request =>
+        umpConnector.removeUserFromTeam(request.body.team, request.body.username).map(_ => Ok)
 end UserManagementController
