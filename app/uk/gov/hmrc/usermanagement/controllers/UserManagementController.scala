@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.usermanagement.controllers
 
+import cats.implicits.*
 import play.api.Logging
 import play.api.libs.json.*
 import play.api.libs.json.Json.toJson
@@ -138,13 +139,52 @@ class UserManagementController @Inject()(
       implicit request =>
         umpConnector.addUserToGithubTeam(request.body.username, request.body.team).map(_ => Ok)
 
-  def addUserToTeam: Action[ManageTeamMembersRequest] =
-    Action.async(parse.json[ManageTeamMembersRequest](ManageTeamMembersRequest.reads)):
-      implicit request =>
-        umpConnector.addUserToTeam(request.body.team, request.body.username).map(_ => Ok)
-
   def removeUserFromTeam: Action[ManageTeamMembersRequest] =
     Action.async(parse.json[ManageTeamMembersRequest](ManageTeamMembersRequest.reads)):
       implicit request =>
-        umpConnector.removeUserFromTeam(request.body.team, request.body.username).map(_ => Ok)
+        ( teamsRepository.findByTeamName(request.body.team)
+        , usersRepository.findByUsername(request.body.username)
+        ).mapN {
+          ( optTeam
+          , optUser
+          ) =>
+            (optTeam, optUser) match
+              case (Some(team), Some(user)) =>
+                for
+                  _           <- umpConnector.removeUserFromTeam(request.body.team, request.body.username)
+                  updatedTeam =  team.copy(members = team.members.filterNot(_.username == user.username))
+                  updatedUser =  user.copy(teamNames = user.teamNames.filterNot(_ == team.teamName))
+                  _           <- teamsRepository.updateOne(updatedTeam)
+                  _           <- usersRepository.updateOne(updatedUser)
+                yield Ok
+              case _ =>
+                umpConnector.removeUserFromTeam(request.body.team, request.body.username).map:_ =>
+                  logger.info(s"Updated successfully on UMP but unable to update mongo cache. Awaiting scheduler for mongo update.")
+                  Ok
+        }.flatten
+
+  def addUserToTeam: Action[ManageTeamMembersRequest] =
+    Action.async(parse.json[ManageTeamMembersRequest](ManageTeamMembersRequest.reads)):
+      implicit request =>
+        ( teamsRepository.findByTeamName(request.body.team)
+        , usersRepository.findByUsername(request.body.username)
+        ).mapN {
+          ( optTeam
+          , optUser
+          ) =>
+            (optTeam, optUser) match
+              case (Some(team), Some(user)) =>
+                for
+                  _           <- umpConnector.addUserToTeam(request.body.team, request.body.username)
+                  updatedTeam =  team.copy(members = team.members :+ Member(user.username, user.displayName, user.role, user.isNonHuman))
+                  updatedUser =  user.copy(teamNames = user.teamNames :+ team.teamName)
+                  _           <- teamsRepository.updateOne(updatedTeam)
+                  _           <- usersRepository.updateOne(updatedUser)
+                yield Ok
+              case _ =>
+                umpConnector.addUserToTeam(request.body.team, request.body.username).map: _ =>
+                  logger.info(s"Updated successfully on UMP but unable to update mongo cache. Awaiting scheduler for mongo update.")
+                  Ok
+
+        }.flatten
 end UserManagementController

@@ -76,6 +76,16 @@ class TeamsRepository @Inject()(
       .collation(caseInsensitiveCollation)
       .toFuture()
 
+  def updateOne(team: Team): Future[Unit] =
+    collection
+      .replaceOne(
+        filter      = Filters.equal("teamName", team.teamName),
+        replacement = team,
+        options     = ReplaceOptions().upsert(true)
+      )
+      .toFuture()
+      .map(_ => ())
+
   def findByTeamName(teamName: String): Future[Option[Team]] =
     collection
       .find(
