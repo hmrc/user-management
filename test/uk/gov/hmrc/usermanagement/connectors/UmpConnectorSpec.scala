@@ -750,6 +750,56 @@ class UmpConnectorSpec
           userManagementConnector.addUserToGithubTeam("tom.test", "PlatOps").futureValue
 
         res shouldBe ()
+
+  "addUserToTeam" when :
+    "parsing a valid response" should :
+      "return Unit" in new Setup:
+        stubFor(
+          put(urlEqualTo("/v2/organisations/teams/PlatOps/members/tom.test"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.addUserToTeam("PlatOps", "tom.test").futureValue
+
+        res shouldBe ()
+      
+  "removeUserFromTeam" when :
+    "parsing a valid response" should :
+      "return Unit" in new Setup:
+        stubFor(
+          delete(urlEqualTo("/v2/organisations/teams/PlatOps/members/tom.test"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.removeUserFromTeam("PlatOps", "tom.test").futureValue
+
+        res shouldBe ()
 end UmpConnectorSpec
 
 trait Setup:
