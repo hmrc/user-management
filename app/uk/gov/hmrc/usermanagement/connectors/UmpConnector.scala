@@ -213,6 +213,28 @@ class UmpConnector @Inject()(
           .flatMap:
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
+
+  def addUserToTeam(team: String, username: String)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .put(url"$userManagementBaseUrl/v2/organisations/teams/$team/members/$username")
+          .setHeader(token.asHeaders():_*)
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e)  => Future.failed(e)
+
+  def removeUserFromTeam(team: String, username: String)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .delete(url"$userManagementBaseUrl/v2/organisations/teams/$team/members/$username")
+          .setHeader(token.asHeaders():_*)
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e)  => Future.failed(e)
 end UmpConnector
 
 object UmpConnector:
