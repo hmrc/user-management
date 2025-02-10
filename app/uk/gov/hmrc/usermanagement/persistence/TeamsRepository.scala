@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.persistence
 import org.mongodb.scala.model.*
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
-import uk.gov.hmrc.usermanagement.model.Team
+import uk.gov.hmrc.usermanagement.model.{Member, Team}
 import org.mongodb.scala.model.Filters.{equal, or}
 import org.mongodb.scala.ObservableFuture
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository.caseInsensitiveCollation
@@ -96,6 +96,30 @@ class TeamsRepository @Inject()(
       )
       .collation(caseInsensitiveCollation)
       .headOption()
+
+  def updateTeamDetails(
+    teamName         : String,
+    members          : Option[Seq[Member]] = None,
+    description      : Option[String]      = None,
+    documentation    : Option[String]      = None,
+    slack            : Option[String]      = None,
+    slackNotification: Option[String]      = None
+  ): Future[Unit] =
+    val updates = Seq(
+      members.map(value => Updates.set("members", value)),
+      description.map(value => Updates.set("description", value)),
+      documentation.map(value => Updates.set("documentation", value)),
+      slack.map(value => Updates.set("slack", value)),
+      slackNotification.map(value => Updates.set("slackNotification", value))
+    ).flatten
+
+    if updates.isEmpty then Future.unit
+    else
+      collection.updateOne(
+        Filters.equal("teamName", teamName),
+        Updates.combine(updates *)
+      ).toFuture().map(_ => ())
+
 end TeamsRepository
 
 object TeamsRepository:

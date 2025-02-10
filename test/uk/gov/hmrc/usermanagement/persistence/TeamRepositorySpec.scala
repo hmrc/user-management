@@ -31,6 +31,10 @@ class TeamRepositorySpec
 
   override val repository: TeamsRepository = TeamsRepository(mongoComponent)
 
+  override protected val checkIndexedQueries: Boolean =
+    // we run unindexed queries
+    false
+    
   "TeamsRepository.putAll" should:
     "delete the existing teams, and insert new teams into the collection" in new Setup(repository):
 
@@ -64,6 +68,54 @@ class TeamRepositorySpec
     "be case insensitive to searches" in new Setup(repository):
       val res: Option[Team] = repository.findByTeamName("TEAM2").futureValue
       res shouldBe Some(team2)
+
+  "TeamsRepository.updateTeamDetails" should :
+    "update only the description if given" in new Setup(repository):
+      repository.updateTeamDetails("team2", description = Some("description")).futureValue
+
+      val res = repository.findByTeamName("team2").futureValue
+
+      res shouldBe Some(team2.copy(description = Some("description")))
+
+    "update only the documentation if given" in new Setup(repository):
+      repository.updateTeamDetails("team2", documentation = Some("http://link-to-docs")).futureValue
+
+      val res = repository.findByTeamName("team2").futureValue
+
+      res shouldBe Some(team2.copy(documentation = Some("http://link-to-docs")))
+
+    "update only the slack channel if given" in new Setup(repository):
+      repository.updateTeamDetails("team2", slack = Some("http://slack.com/team2")).futureValue
+
+      val res = repository.findByTeamName("team2").futureValue
+
+      res shouldBe Some(team2.copy(slack = Some("http://slack.com/team2")))
+
+    "update only the slack notification channel if given" in new Setup(repository):
+      repository.updateTeamDetails("team2", slackNotification = Some("http://slack.com/team2-alert")).futureValue
+
+      val res = repository.findByTeamName("team2").futureValue
+
+      res shouldBe Some(team2.copy(slackNotification = Some("http://slack.com/team2-alert")))
+
+    "update all details if given" in new Setup(repository):
+      repository.updateTeamDetails(
+        teamName          = "team2",
+        description       = Some("description"),
+        documentation     = Some("http://link-to-docs"),
+        slack             = Some("http://slack.com/team2"),
+        slackNotification = Some("http://slack.com/team2-alert")
+      ).futureValue
+
+      val res = repository.findByTeamName("team2").futureValue
+
+      res shouldBe Some(team2.copy(
+        description       = Some("description"),
+        documentation     = Some("http://link-to-docs"),
+        slack             = Some("http://slack.com/team2"),
+        slackNotification = Some("http://slack.com/team2-alert")
+      ))
+
 end TeamRepositorySpec
 
 class Setup(repository: TeamsRepository):
