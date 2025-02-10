@@ -97,12 +97,24 @@ class UserManagementController @Inject()(
               logger.info(s"Updated successfully on UMP but username '${request.body.username}' not found in mongo. Awaiting scheduler for mongo update.")
               Accepted
 
+  def editTeamDetails: Action[EditTeamDetails] =
+    Action.async(parse.json[EditTeamDetails](EditTeamDetails.reads)):
+      implicit request =>
+        umpConnector.editTeamDetails(request.body).flatMap: _ =>
+          teamsRepository.updateTeamDetails(
+            teamName          = request.body.team,
+            members           = None,
+            description       = request.body.description,
+            documentation     = request.body.documentation,
+            slack             = request.body.slack,
+            slackNotification = request.body.slackNotification
+          ).map(_ => Accepted)
+
   def editUserAccess: Action[EditUserAccessRequest] =
     Action.async(parse.json[EditUserAccessRequest](EditUserAccessRequest.reads)):
       implicit request =>
         umpConnector.editUserAccess(request.body).map(_ => Accepted)
 
-          
   def getUserAccess(username: String): Action[AnyContent] = Action.async:
     implicit request =>
       userAccessService.getUserAccess(username)
@@ -128,7 +140,6 @@ class UserManagementController @Inject()(
           else
             val filtered = res.copy(members = res.members.filterNot(_.isNonHuman))
             Ok(Json.toJson(filtered))
-
 
   def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:
     implicit request =>

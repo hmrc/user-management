@@ -294,6 +294,143 @@ class UmpConnectorSpec
 
         res shouldBe a[UpstreamErrorResponse]
 
+  "editTeamDetails" when :
+    "parsing a valid response" should :
+      "pass a full correct payload and return unit" in new Setup:
+        stubFor(
+          patch(urlEqualTo("/v2/organisations/teams/test-team"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(
+                  """
+                    |{
+                    |  "team": "test-team",
+                    |  "members": [],
+                    |  "description": "Test Team",
+                    |  "documentation": "https://test-team-url",
+                    |  "slack": "https://slack.com/messages/test-team",
+                    |  "slackNotification": "https://slack.com/messages/test-team-alerts"
+                    |}
+                    |""".stripMargin)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val actualEditTeamDetailsRequest =
+          """
+            |{
+            |  "description": "Test Team",
+            |  "documentation": "https://test-team-url",
+            |  "slack": "https://slack.com/messages/test-team",
+            |  "slackNotification": "https://slack.com/messages/test-team-alerts"
+            |}
+            |""".stripMargin
+
+        val res: Unit =
+          userManagementConnector.editTeamDetails(editTeamDetails).futureValue
+
+        res shouldBe()
+
+        verify(
+          patchRequestedFor(urlPathEqualTo("/v2/organisations/teams/test-team"))
+            .withRequestBody(equalToJson(actualEditTeamDetailsRequest))
+        )
+
+      "pass a correct payload with only one attribute to edit and return unit" in new Setup:
+        stubFor(
+          patch(urlEqualTo("/v2/organisations/teams/test-team"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(
+                  """
+                    |{
+                    |  "team": "test-team",
+                    |  "members": [],
+                    |  "description": "Test Team",
+                    |  "documentation": "https://test-team-url",
+                    |  "slack": "https://slack.com/messages/test-team",
+                    |  "slackNotification": "https://slack.com/messages/test-team-alerts"
+                    |}
+                    |""".stripMargin)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val actualEditTeamDetailsRequest =
+          """
+            |{
+            |  "description": "Test Team"
+            |}
+            |""".stripMargin
+
+        val res: Unit =
+          userManagementConnector.editTeamDetails(editTeamDetails.copy(documentation = None, slack = None, slackNotification = None)).futureValue
+
+        res shouldBe()
+
+        verify(
+          patchRequestedFor(urlPathEqualTo("/v2/organisations/teams/test-team"))
+            .withRequestBody(equalToJson(actualEditTeamDetailsRequest))
+        )
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          patch(urlEqualTo("/v2/organisations/teams/test-team"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+                .withBody("""{"reason": "Forbidden"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editTeamDetails(editTeamDetails).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editTeamDetails(editTeamDetails).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
   "resetUserGooglePassword" when :
     "parsing a valid response" should :
       "return a ticket number" in new Setup:
@@ -775,7 +912,7 @@ class UmpConnectorSpec
           userManagementConnector.addUserToTeam("PlatOps", "tom.test").futureValue
 
         res shouldBe ()
-      
+
   "removeUserFromTeam" when :
     "parsing a valid response" should :
       "return Unit" in new Setup:
@@ -870,3 +1007,12 @@ trait Setup:
       username = username,
       password = SensitiveString("password")
     )
+
+val editTeamDetails: EditTeamDetails =
+  EditTeamDetails(
+    team              = "test-team",
+    description       = Some("Test Team"),
+    documentation     = Some("https://test-team-url"),
+    slack             = Some("https://slack.com/messages/test-team"),
+    slackNotification = Some("https://slack.com/messages/test-team-alerts"),
+  )
