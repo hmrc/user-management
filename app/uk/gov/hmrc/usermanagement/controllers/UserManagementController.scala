@@ -185,13 +185,17 @@ class UserManagementController @Inject()(
           ) =>
             (optTeam, optUser) match
               case (Some(team), Some(user)) =>
-                for
-                  _           <- umpConnector.addUserToTeam(request.body.team, request.body.username)
-                  updatedTeam =  team.copy(members = team.members :+ Member(user.username, user.displayName, user.role, user.isNonHuman))
-                  updatedUser =  user.copy(teamNames = user.teamNames :+ team.teamName)
-                  _           <- teamsRepository.updateOne(updatedTeam)
-                  _           <- usersRepository.updateOne(updatedUser)
-                yield Ok
+                if (!team.members.exists(_.username == user.username))
+                  for
+                    _           <- umpConnector.addUserToTeam(request.body.team, request.body.username)
+                    updatedTeam =  team.copy(members = team.members :+ Member(user.username, user.displayName, user.role, user.isNonHuman))
+                    updatedUser =  user.copy(teamNames = user.teamNames :+ team.teamName)
+                    _           <- teamsRepository.updateOne(updatedTeam)
+                    _           <- usersRepository.updateOne(updatedUser)
+                  yield Ok
+                else
+                  // User is already in team, just call UMP anyway for completeness
+                  umpConnector.addUserToTeam(request.body.team, request.body.username).map(_ => Ok)
               case _ =>
                 umpConnector.addUserToTeam(request.body.team, request.body.username).map: _ =>
                   logger.info(s"Updated successfully on UMP but unable to update mongo cache. Awaiting scheduler for mongo update.")
