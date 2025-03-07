@@ -294,6 +294,71 @@ class UmpConnectorSpec
 
         res shouldBe a[UpstreamErrorResponse]
 
+  "createTeam" when :
+    "parsing a valid response" should :
+      "return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/organisations/teams"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"organisation": "SomeOrg", "team": "SomeTeam"}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.createTeam(createTeamRequest).futureValue
+
+        res shouldBe()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/organisations/teams"))
+            .willReturn(
+              aResponse()
+                .withStatus(422)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.createTeam(createTeamRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.createTeam(createTeamRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+        
   "editTeamDetails" when :
     "parsing a valid response" should :
       "pass a full correct payload and return unit" in new Setup:
@@ -431,6 +496,70 @@ class UmpConnectorSpec
 
         res shouldBe a[UpstreamErrorResponse]
 
+  "deleteTeam" when :
+    "parsing a valid response" should :
+      "return unit" in new Setup:
+        stubFor(
+          delete(urlEqualTo("/v2/organisations/teams/SomeTeam"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.deleteTeam("SomeTeam").futureValue
+
+        res shouldBe()
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          delete(urlEqualTo("/v2/organisations/teams/SomeTeam"))
+            .willReturn(
+              aResponse()
+                .withStatus(422)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.deleteTeam("SomeTeam").failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.deleteTeam("SomeTeam").failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+        
   "resetUserGooglePassword" when :
     "parsing a valid response" should :
       "return a ticket number" in new Setup:
@@ -970,6 +1099,12 @@ trait Setup:
       isReturningUser = false,
       isTransitoryUser = false,
       isExistingLDAPUser = false
+    )
+
+  val createTeamRequest: CreateTeamRequest =
+    CreateTeamRequest(
+      organisation = "SomeOrg",
+      team = "SomeTeam"
     )
 
   val editUserDetailsRequest: EditUserDetailsRequest =

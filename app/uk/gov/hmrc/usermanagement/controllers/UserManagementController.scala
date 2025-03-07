@@ -97,6 +97,23 @@ class UserManagementController @Inject()(
               logger.info(s"Updated successfully on UMP but username '${request.body.username}' not found in mongo. Awaiting scheduler for mongo update.")
               Accepted
 
+  def createTeam: Action[CreateTeamRequest] =
+    Action.async(parse.json[CreateTeamRequest](CreateTeamRequest.formats)):
+      implicit request =>
+        umpConnector.createTeam(request.body).flatMap: _ =>
+          teamsRepository.findByTeamName(request.body.team).flatMap:
+            case None =>
+              teamsRepository.updateOne(Team(Seq.empty[Member], request.body.team, None, None, None, None))
+                .map(_ => Created)
+            case _ =>
+              logger.info(s"Team created successfully on UMP but already exists in mongo cache. Awaiting scheduler for mongo update.")
+              Future.successful(Created)
+
+  def deleteTeam(teamName: String): Action[AnyContent] = Action.async:
+    implicit request =>
+      umpConnector.deleteTeam(teamName).flatMap: _ =>
+        teamsRepository.deleteOne(teamName).map(_ => Created)
+
   def editTeamDetails: Action[EditTeamDetails] =
     Action.async(parse.json[EditTeamDetails](EditTeamDetails.reads)):
       implicit request =>
