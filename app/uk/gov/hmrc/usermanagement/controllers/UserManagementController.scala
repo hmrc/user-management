@@ -112,7 +112,7 @@ class UserManagementController @Inject()(
   def deleteTeam(teamName: String): Action[AnyContent] = Action.async:
     implicit request =>
       umpConnector.deleteTeam(teamName).flatMap: _ =>
-        teamsRepository.deleteOne(teamName).map(_ => Created)
+        teamsRepository.deleteOne(teamName).map(_ => Ok)
 
   def editTeamDetails: Action[EditTeamDetails] =
     Action.async(parse.json[EditTeamDetails](EditTeamDetails.reads)):
