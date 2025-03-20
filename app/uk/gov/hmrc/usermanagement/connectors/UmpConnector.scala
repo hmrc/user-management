@@ -52,7 +52,10 @@ class UmpConnector @Inject()(
 
   private def getUsersUmpToken()(using hc: HeaderCarrier): Future[UsersUmpAuthToken] =
     given Reads[UsersUmpAuthToken] = UsersUmpAuthToken.reads
-    val internalAuthBaseUrl   = servicesConfig.baseUrl("internal-auth")
+    val internalAuthBaseUrl   = servicesConfig.getConfString(
+        "internal-auth.url",
+        servicesConfig.baseUrl("internal-auth")
+    )
     httpClientV2
       .get(url"$internalAuthBaseUrl/internal-auth/ump/token")
       .execute[UsersUmpAuthToken]
