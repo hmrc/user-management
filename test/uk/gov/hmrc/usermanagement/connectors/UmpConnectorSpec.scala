@@ -49,6 +49,7 @@ class UmpConnectorSpec
         "microservice.services.user-management.host" -> wireMockHost,
         "microservice.services.internal-auth.port"   -> wireMockPort,
         "microservice.services.internal-auth.host"   -> wireMockHost,
+        "microservice.services.internal-auth.url"    -> null,
         "play.http.requestHandler"                   -> "play.api.http.DefaultHttpRequestHandler",
         "metrics.jvm"                                -> false,
         "ump.auth.username"                          -> "user",
