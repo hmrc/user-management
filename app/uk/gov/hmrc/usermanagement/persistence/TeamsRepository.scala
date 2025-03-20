@@ -89,10 +89,7 @@ class TeamsRepository @Inject()(
   def deleteOne(teamName: String): Future[Unit] =
     collection
       .deleteOne(
-        or(
-          equal("teamName", teamName),
-          equal("teamName", teamName.replace("-", " "))
-        )
+          equal("teamName", teamName)
       )
       .toFuture()
       .map(_ => ())
