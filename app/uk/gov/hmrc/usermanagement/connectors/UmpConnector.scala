@@ -52,7 +52,10 @@ class UmpConnector @Inject()(
 
   private def getUsersUmpToken()(using hc: HeaderCarrier): Future[UsersUmpAuthToken] =
     given Reads[UsersUmpAuthToken] = UsersUmpAuthToken.reads
-    val internalAuthBaseUrl   = servicesConfig.baseUrl("internal-auth")
+    val internalAuthBaseUrl   = servicesConfig.getConfString(
+        "internal-auth.url",
+        servicesConfig.baseUrl("internal-auth")
+    )
     httpClientV2
       .get(url"$internalAuthBaseUrl/internal-auth/ump/token")
       .execute[UsersUmpAuthToken]
@@ -109,6 +112,18 @@ class UmpConnector @Inject()(
             case Right(_) => Future.unit
             case Left(e) => Future.failed(e)
 
+  def createTeam(createTeamRequest: CreateTeamRequest)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/organisations/teams")
+          .setHeader(token.asHeaders(): _*)
+          .withBody(Json.toJson(createTeamRequest)(CreateTeamRequest.formats))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e) => Future.failed(e)
+
   def editTeamDetails(editTeamDetails: EditTeamDetails)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>
@@ -116,6 +131,17 @@ class UmpConnector @Inject()(
           .patch(url"$userManagementBaseUrl/v2/organisations/teams/${editTeamDetails.team}")
           .setHeader(token.asHeaders(): _*)
           .withBody(Json.toJson(editTeamDetails)(EditTeamDetails.writes))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e) => Future.failed(e)
+
+  def deleteTeam(teamName: String)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .delete(url"$userManagementBaseUrl/v2/organisations/teams/$teamName")
+          .setHeader(token.asHeaders(): _*)
           .execute[Either[UpstreamErrorResponse, Unit]]
           .flatMap:
             case Right(_) => Future.unit

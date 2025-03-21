@@ -11,6 +11,8 @@
 
 # Add all the application routes to the prod.routes file
 
-POST    /test-only/teams  @uk.gov.hmrc.usermanagement.testonly.IntegrationTestSupportController.addTeams()
-DELETE  /test-only/teams  @uk.gov.hmrc.usermanagement.testonly.IntegrationTestSupportController.deleteTeams()
-->      /                 prod.Routes
+POST    /test-only/teams                    @uk.gov.hmrc.usermanagement.testonly.IntegrationTestSupportController.addTeams()
+DELETE  /test-only/teams                    @uk.gov.hmrc.usermanagement.testonly.IntegrationTestSupportController.deleteTeams()
+
+GET     /test-only/internal-auth/ump/token  @uk.gov.hmrc.usermanagement.testonly.InternalAuthController.retrieveUmpToken()
+->      /                                   prod.Routes

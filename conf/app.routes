@@ -17,4 +17,6 @@ POST       /remove-user-from-team   uk.gov.hmrc.usermanagement.controllers.UserM
 
 GET        /teams                   uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams(includeNonHuman: Boolean ?= false)
 GET        /teams/:team             uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team, includeNonHuman: Boolean ?= false)
+POST       /create-team             uk.gov.hmrc.usermanagement.controllers.UserManagementController.createTeam
 PATCH      /edit-team-details       uk.gov.hmrc.usermanagement.controllers.UserManagementController.editTeamDetails
+DELETE     /delete-team/:team       uk.gov.hmrc.usermanagement.controllers.UserManagementController.deleteTeam(team: String)

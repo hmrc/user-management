@@ -85,6 +85,14 @@ class TeamsRepository @Inject()(
       )
       .toFuture()
       .map(_ => ())
+    
+  def deleteOne(teamName: String): Future[Unit] =
+    collection
+      .deleteOne(
+          equal("teamName", teamName)
+      )
+      .toFuture()
+      .map(_ => ())
 
   def findByTeamName(teamName: String): Future[Option[Team]] =
     collection
