@@ -29,6 +29,7 @@ import uk.gov.hmrc.crypto.Sensitive.SensitiveString
 import uk.gov.hmrc.http.test.{HttpClientV2Support, WireMockSupport}
 import uk.gov.hmrc.http.{HeaderCarrier, JsValidationException, UpstreamErrorResponse}
 import uk.gov.hmrc.usermanagement.model.*
+import uk.gov.hmrc.usermanagement.model.UserRole.*
 
 class UmpConnectorSpec
   extends AnyWordSpec
@@ -292,6 +293,178 @@ class UmpConnectorSpec
 
         val res: Throwable =
           userManagementConnector.editUserDetails(editUserDetailsRequest).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+  "getUserRoles" when :
+    "parsing a valid response" should :
+      "return all roles if assigned" in new Setup:
+        val userRolesJson =
+          """{
+            |  "roles": [
+            |    "team_admin",
+            |    "trusted_authoriser",
+            |    "location_authoriser",
+            |    "global_authoriser",
+            |    "experimental_features"
+            |  ]
+            |}""".stripMargin
+
+        stubFor(
+          get(urlEqualTo("/v2/roles/users/joe.bloggs"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(userRolesJson)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: UserRoles =
+          userManagementConnector.getUserRoles("joe.bloggs").futureValue
+
+        res shouldBe(UserRoles(Seq(TeamAdmin, TrustedAuthoriser, LocationAuthoriser, GlobalAuthoriser, ExperimentalFeatures)))
+
+      "return an empty sequence if no roles are assigned" in new Setup:
+        stubFor(
+          get(urlEqualTo("/v2/roles/users/joe.bloggs"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody("""{"roles": []}""")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: UserRoles =
+          userManagementConnector.getUserRoles("joe.bloggs").futureValue
+
+        res shouldBe (UserRoles(Seq.empty[UserRole]))
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/v2/roles/users/joe.bloggs"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserRoles("joe.bloggs", userRoles).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserRoles("joe.bloggs", userRoles).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+  "editUserRoles" when :
+    "parsing a valid response" should :
+      "pass the correct payload and return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/roles/users/joe.bloggs"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val actualEditUserRoles =
+          """{"roles" : ["team_admin", "experimental_features"]}"""
+
+        val res: Unit =
+          userManagementConnector.editUserRoles("joe.bloggs", userRoles).futureValue
+
+        res shouldBe()
+
+        verify(
+          postRequestedFor(urlPathEqualTo("/v2/roles/users/joe.bloggs"))
+            .withRequestBody(equalToJson(actualEditUserRoles))
+        )
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo("/v2/roles/users/joe.bloggs"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserRoles("joe.bloggs", userRoles).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.editUserRoles("joe.bloggs", userRoles).failed.futureValue
 
         res shouldBe a[UpstreamErrorResponse]
 
@@ -1113,6 +1286,11 @@ trait Setup:
       username = "joe.bloggs",
       attribute = UserAttribute.DisplayName,
       value = "Joseph Bloggs"
+    )
+
+  val userRoles: UserRoles =
+    UserRoles(
+      roles = Seq(TeamAdmin, ExperimentalFeatures)
     )
 
   val username = "john.doe"
