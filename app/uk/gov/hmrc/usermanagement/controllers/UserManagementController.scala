@@ -138,6 +138,17 @@ class UserManagementController @Inject()(
         .map:
           _.fold(NotFound: Result)(res => Ok(Json.toJson(res)(UserAccess.writes)))
 
+  def getUserRoles(username: String): Action[AnyContent] = Action.async:
+    implicit request =>
+      given Writes[UserRole] = UserRole.writes
+      umpConnector.getUserRoles(username)
+        .map(res => Ok(Json.toJson(res)))
+          
+  def editUserRoles: Action[EditUserRoles] =
+    Action.async(parse.json[EditUserRoles](EditUserRoles.reads)):
+      implicit request =>
+        umpConnector.editUserRoles(request.body).map(_ => Accepted)
+
   def resetUserLdapPassword: Action[ResetLdapPassword] =
     Action.async(parse.json[ResetLdapPassword](ResetLdapPassword.reads)):
       implicit request =>
