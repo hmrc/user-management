@@ -24,7 +24,6 @@ import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.scheduler
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
 
 trait SchedulerUtils extends Logging:
 
@@ -72,8 +71,6 @@ trait SchedulerUtils extends Logging:
         .map:
           case Some(_) => logger.debug(s"Scheduler $label finished - releasing lock")
           case None    => logger.debug(s"Scheduler $label cannot run - lock ${lock.lockId} is taken... skipping update")
-        .recover:
-          case NonFatal(e) => logger.error(s"Scheduler $label interrupted because: ${e.getMessage}", e)
 end SchedulerUtils
 
 object SchedulerUtils extends SchedulerUtils
