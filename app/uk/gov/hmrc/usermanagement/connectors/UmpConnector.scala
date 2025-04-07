@@ -185,6 +185,27 @@ class UmpConnector @Inject()(
                 s"This indicates the user does not exist within UMP.")
               None
 
+  def getUserRoles(username: String)(using HeaderCarrier): Future[UserRoles] =
+    given Reads[UserRoles] = UserRoles.reads
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .get(url"$userManagementBaseUrl/v2/roles/users/$username")
+          .setHeader(token.asHeaders(): _*)
+          .execute[UserRoles]
+
+  def editUserRoles(username: String, userRoles: UserRoles)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/roles/users/$username")
+          .setHeader(token.asHeaders(): _*)
+          .withBody(Json.toJson(userRoles)(UserRoles.writes))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e)  => Future.failed(e)
+
   def resetUserLdapPassword(resetLdapPassword: ResetLdapPassword)(using HeaderCarrier): Future[JsValue] =
     getUsersUmpToken()
       .flatMap: token =>
@@ -341,5 +362,5 @@ object UmpConnector:
   val readsAtTeams: Reads[Seq[Team]] =
     given Reads[Team] = umpTeamReads
     Reads.at[Seq[Team]](__ \ "teams")
-
+  
 end UmpConnector
