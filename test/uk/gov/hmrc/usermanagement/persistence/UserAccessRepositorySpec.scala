@@ -33,13 +33,17 @@ class UserAccessRepositorySpec
 
   override val repository: UserAccessRepository = UserAccessRepository(mongoComponent)
 
-  val username = "Joe Bloggs"
+  val username = "joe.bloggs"
+
+  val userAccess = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true)
+
+  val now = Instant.now().truncatedTo(ChronoUnit.MILLIS)
 
   val userWithAccess =
     UserWithAccess(
       username       = username,
-      access         = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true),
-      createdAt      = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+      access         = userAccess,
+      createdAt      = now
     )
 
   "UserAccessRepository" should:
@@ -52,4 +56,28 @@ class UserAccessRepositorySpec
   "UserAccessRepository.findByUsername" should:
     "return None when username is not found" in:
       repository.findByUsername("jane.doe").futureValue shouldBe None
+
+  "UserAccessRepository.update" should:
+    "update a users vpn access when a record is found" in:
+      repository.put(userWithAccess).futureValue
+      repository.update(username, vpn = Some(false)).futureValue
+      val res: Option[UserWithAccess] = repository.findByUsername(username).futureValue
+      res shouldBe Some(UserWithAccess(username, userAccess.copy(vpn = false), now))
+
+    "not update a users vpn access when no record is found" in :
+      repository.update(username, vpn = Some(false)).futureValue
+      val res: Option[UserWithAccess] = repository.findByUsername(username).futureValue
+      res shouldBe None
+
+    "update a users devTools access when a record is found" in :
+      repository.put(userWithAccess).futureValue
+      repository.update(username, devTools = Some(false)).futureValue
+      val res: Option[UserWithAccess] = repository.findByUsername(username).futureValue
+      res shouldBe Some(UserWithAccess(username, userAccess.copy(devTools = false), now))
+
+    "not update a users devTools access when no record is found" in :
+      repository.update(username, devTools = Some(false)).futureValue
+      val res: Option[UserWithAccess] = repository.findByUsername(username).futureValue
+      res shouldBe None
+
 end UserAccessRepositorySpec
