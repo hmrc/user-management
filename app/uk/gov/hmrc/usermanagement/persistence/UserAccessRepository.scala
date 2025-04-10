@@ -49,9 +49,30 @@ class UserAccessRepository @Inject()(
 
   def put(userWithAccess: UserWithAccess): Future[Unit] =
     collection
-      .insertOne(userWithAccess)
+      .replaceOne(
+        filter      = Filters.equal("username", userWithAccess.username),
+        replacement = userWithAccess,
+        options     = ReplaceOptions().upsert(true)
+      )
       .toFuture()
       .map(_ => ())
+
+  def update(
+    username: String,
+    vpn     : Option[Boolean] = None,
+    devTools: Option[Boolean] = None
+  ): Future[Unit] =
+    val updates = Seq(
+      vpn.map(value => Updates.set("access.vpn", value)),
+      devTools.map(value => Updates.set("access.devTools", value))
+    ).flatten
+
+    if updates.isEmpty then Future.unit
+    else
+      collection.updateOne(
+        Filters.equal("username", username),
+        Updates.combine(updates *)
+      ).toFuture().map(_ => ())
 
   def findByUsername(username: String): Future[Option[UserWithAccess]] =
     collection

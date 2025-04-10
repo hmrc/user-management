@@ -866,6 +866,168 @@ class UmpConnectorSpec
 
         res shouldBe a[UpstreamErrorResponse]
 
+  "manageVpnAccess" when :
+    "parsing a valid response" should :
+      "pass the correct payload and return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo(s"/v2/vpn/users/$username"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("valid-user-access.json")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val manageVpnPayload =
+          """{"isVPNUser": true}"""
+
+        val res: Unit =
+          userManagementConnector.manageVpnAccess(username, true).futureValue
+
+        res shouldBe()
+
+        verify(
+          postRequestedFor(urlPathEqualTo(s"/v2/vpn/users/$username"))
+            .withRequestBody(equalToJson(manageVpnPayload))
+        )
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo(s"/v2/vpn/users/$username"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.manageVpnAccess(username, true).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.manageVpnAccess("joe.bloggs", true).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+  "manageDevToolsAccess" when :
+    "parsing a valid response" should :
+      "pass the correct payload and return unit" in new Setup:
+        stubFor(
+          post(urlEqualTo(s"/v2/environments/users/$username"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBodyFile("valid-user-access.json")
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val manageDevToolsPayload =
+          """{"prod": ["dev-tools"], "qa-left": [], "qa-right": [], "staging-left": [], "dev": [], "build": []}"""
+
+        val res: Unit =
+          userManagementConnector.manageDevToolsAccess(username, true).futureValue
+
+        res shouldBe()
+
+        verify(
+          postRequestedFor(urlPathEqualTo(s"/v2/environments/users/$username"))
+            .withRequestBody(equalToJson(manageDevToolsPayload))
+        )
+
+    "it receives a non 2xx status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          post(urlEqualTo(s"/v2/environments/users/$username"))
+            .willReturn(
+              aResponse()
+                .withStatus(403)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.manageDevToolsAccess(username, true).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.manageDevToolsAccess(username, true).failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
   "editUserAccess" when :
     "parsing a valid response" should :
       "return unit" in new Setup:

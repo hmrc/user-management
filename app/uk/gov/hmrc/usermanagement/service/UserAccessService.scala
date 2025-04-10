@@ -44,5 +44,21 @@ class UserAccessService @Inject()(
             userAccessRepository.put(UserWithAccess(username, userAccess, Instant.now())).map(_ => Some(userAccess))
           case None =>
             Future.successful(None)
-        
+
+  def manageVpnAccess(username: String, enableVpn: Boolean)(using HeaderCarrier): Future[Unit] =
+    umpConnector.manageVpnAccess(username, enableVpn).flatMap: _ =>
+      umpConnector.getUserAccess(username).flatMap:
+        case Some(userAccess) =>
+          userAccessRepository.put(UserWithAccess(username, userAccess, Instant.now())).map(_ => ())
+        case None =>
+          Future.unit
+
+  def manageDevToolsAccess(username: String, enableDevTools: Boolean)(using HeaderCarrier): Future[Unit] =
+    umpConnector.manageDevToolsAccess(username, enableDevTools).flatMap: _ =>
+      umpConnector.getUserAccess(username).flatMap:
+        case Some(userAccess) =>
+          userAccessRepository.put(UserWithAccess(username, userAccess, Instant.now())).map(_ => ())
+        case None =>
+          Future.unit
+
 end UserAccessService
