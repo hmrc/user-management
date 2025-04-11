@@ -169,6 +169,16 @@ class UserManagementController @Inject()(
             val filtered = res.copy(members = res.members.filterNot(_.isNonHuman))
             Ok(Json.toJson(filtered))
 
+  def manageVpnAccess(username: String, enableVpn: Boolean): Action[AnyContent] = Action.async:
+    implicit request =>
+      userAccessService.manageVpnAccess(username, enableVpn)
+        .map(_ => Accepted)
+
+  def manageDevToolsAccess(username: String, enableDevTools: Boolean): Action[AnyContent] = Action.async:
+    implicit request =>
+      userAccessService.manageDevToolsAccess(username, enableDevTools)
+        .map(_ => Accepted)
+      
   def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:
     implicit request =>
       umpConnector.requestNewVpnCert(username).map(json => Created(json))
