@@ -250,7 +250,32 @@ class UmpConnector @Inject()(
         case member if nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_)) => member.copy(isNonHuman = true)
         case member => member
       )
-  
+
+  def manageVpnAccess(username: String, enableVpn: Boolean)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/vpn/users/$username")
+          .setHeader(token.asHeaders(): _*)
+          .withBody(Json.parse(s"""{"isVPNUser":$enableVpn}"""))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(json) => Future.unit
+            case Left(e)     => Future.failed(e)
+
+
+  def manageDevToolsAccess(username: String, enableDevTools: Boolean)(using HeaderCarrier): Future[Unit] =
+    getUsersUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .post(url"$userManagementBaseUrl/v2/environments/users/$username")
+          .setHeader(token.asHeaders(): _*)
+          .withBody(devToolsPayload(enableDevTools))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(json) => Future.unit
+            case Left(e) => Future.failed(e)
+
   def requestNewVpnCert(username: String)(using HeaderCarrier): Future[JsValue] =
     getUsersUmpToken()
       .flatMap: token =>
@@ -362,5 +387,15 @@ object UmpConnector:
   val readsAtTeams: Reads[Seq[Team]] =
     given Reads[Team] = umpTeamReads
     Reads.at[Seq[Team]](__ \ "teams")
-  
+
+  def devToolsPayload(enableDevTools: Boolean): JsObject =
+    Json.obj(
+      "prod"         -> (if enableDevTools then Json.arr("dev-tools") else Json.arr()),
+      "qa-left"      -> Json.arr(),
+      "qa-right"     -> Json.arr(),
+      "staging-left" -> Json.arr(),
+      "dev"          -> Json.arr(),
+      "build"        -> Json.arr()
+    )
+
 end UmpConnector
