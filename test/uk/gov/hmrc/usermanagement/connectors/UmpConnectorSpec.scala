@@ -1402,6 +1402,49 @@ class UmpConnectorSpec
           userManagementConnector.removeUserFromTeam("PlatOps", "tom.test").futureValue
 
         res shouldBe ()
+
+  "offboardUsers" when:
+    "parsing a valid response" should:
+      "return unit" in new Setup:
+
+        val offboardUsersRequest =
+          OffBoardUsersRequest(
+            usernames = Set("user.one", "user.two")
+          )
+
+        val actualOffboardUsersRequest =
+          """{
+            |  "task": "offboard_users",
+            |  "args": ["user.one", "user.two"]
+            |}
+            |""".stripMargin
+
+        stubFor(
+          post(urlEqualTo("/v2/tasks"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res: Unit =
+          userManagementConnector.offboardUsers(offboardUsersRequest).futureValue
+
+        res shouldBe ()
+
+        verify(
+          postRequestedFor(urlEqualTo("/v2/tasks"))
+            .withRequestBody(equalToJson(actualOffboardUsersRequest))
+        )
 end UmpConnectorSpec
 
 trait Setup:
