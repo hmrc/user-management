@@ -248,7 +248,7 @@ class UserManagementController @Inject()(
           users <- request.body.usernames.toSeq.foldLeftM(Set.empty[User]): (acc, username) =>
                      usersRepository.findByUsername(username).map:
                         case Some(user) => acc + user
-                        case _          => logger.info(s"Offboarding users request - not found user info for: $username")
+                        case _          => logger.warn(s"Offboarding users request - not found user info for: $username")
                                            acc
           _     <- umpConnector.offboardUsers(OffBoardUsersRequest(users.map(_.username)))
         yield Ok
