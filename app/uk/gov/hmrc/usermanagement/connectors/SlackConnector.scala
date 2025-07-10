@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.usermanagement.connectors
 
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.stream.Materializer
 import play.api.Configuration
 import play.api.libs.functional.syntax.*
 import play.api.libs.json.{Format, __}
@@ -26,6 +28,7 @@ import uk.gov.hmrc.usermanagement.model.SlackUser
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.DurationInt
 
 @Singleton
 class SlackConnector @Inject()(
@@ -51,14 +54,19 @@ class SlackConnector @Inject()(
       .withProxy
       .execute[SlackUserListPage]
 
-  def getAllSlackUsers()(using HeaderCarrier): Future[Seq[SlackUser]] =
-    def go(cursor: String, accMembers: Seq[SlackUser]): Future[Seq[SlackUser]] =
-      getSlackUsersPage(cursor).flatMap: result =>
-        val newMembers = accMembers ++ result.members
-        if   result.nextCursor.isEmpty
-        then Future.successful(newMembers)
-        else go(result.nextCursor, newMembers)
-    go("", Seq.empty)
+  def getAllSlackUsers()(using Materializer, HeaderCarrier): Future[Seq[SlackUser]] =
+    Source.unfoldAsync(Option(""): Option[String]):
+      case None         => Future.successful(None)
+      case Some(cursor) =>
+        getSlackUsersPage(cursor).map: result =>
+          if   result.nextCursor.isEmpty()
+          then Some((None, cursor))
+          else Some((Some(result.nextCursor), cursor))
+    .throttle(1, 3.second) // https://api.slack.com/methods/users.list is API limit tier 2 which is 20 per minute
+    .mapAsync(1)(cursor => getSlackUsersPage(cursor))
+    .runFold(Seq.empty[SlackUser]): (acc, page) =>
+      acc ++ page.members
+
 end SlackConnector
 
 private final case class SlackUserListPage(

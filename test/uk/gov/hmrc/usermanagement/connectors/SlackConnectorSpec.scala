@@ -18,6 +18,7 @@ package uk.gov.hmrc.usermanagement.connectors
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.typesafe.config.ConfigFactory
+import org.apache.pekko.actor.ActorSystem
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
@@ -35,6 +36,7 @@ class SlackConnectorSpec
     with HttpClientV2Support:
 
   private given HeaderCarrier = new HeaderCarrier()
+  private given ActorSystem   = ActorSystem("test")
 
   private val config = ConfigFactory.parseString(
     s"""
