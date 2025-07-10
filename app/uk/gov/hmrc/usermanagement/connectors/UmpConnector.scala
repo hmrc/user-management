@@ -373,7 +373,7 @@ object UmpConnector:
     ~ ( __ \ "givenName"    ).readNullable[String]
     ~ ( __ \ "organisation" ).readNullable[String]
     ~ ( __ \ "primaryEmail" ).read[String]
-    ~ ( __ \ "slackID"      ).readNullable[String]
+    ~ Reads.pure(None) // slackID will be copied in later
     ~ ( __ \ "username"     ).read[String]
     ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
