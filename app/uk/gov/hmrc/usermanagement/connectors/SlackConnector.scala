@@ -60,10 +60,9 @@ class SlackConnector @Inject()(
       case Some(cursor) =>
         getSlackUsersPage(cursor).map: result =>
           if   result.nextCursor.isEmpty()
-          then Some((None, cursor))
-          else Some((Some(result.nextCursor), cursor))
-    .throttle(1, 3.second) // https://api.slack.com/methods/users.list is API limit tier 2 which is 20 per minute
-    .mapAsync(1)(cursor => getSlackUsersPage(cursor))
+          then Some((None, result))
+          else Some((Some(result.nextCursor), result))
+    .throttle(1, 4.second) // https://api.slack.com/methods/users.list is API limit tier 2 which is 20 per minute
     .runFold(Seq.empty[SlackUser]): (acc, page) =>
       acc ++ page.members
 

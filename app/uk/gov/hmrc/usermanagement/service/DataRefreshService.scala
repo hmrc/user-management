@@ -42,9 +42,9 @@ class DataRefreshService @Inject()(
   def updateUsersAndTeams()(using Materializer, HeaderCarrier): Future[Unit] =
     for
       umpUsers             <- umpConnector.getAllUsers()
-      _                    =  logger.info("Successfully retrieved users from UMP")
+      _                    =  logger.info(s"Successfully retrieved ${umpUsers.length} users from UMP")
       slackUsers           <- slackConnector.getAllSlackUsers()
-      _                    =  logger.info("Successfully retrieved users from Slack")
+      _                    =  logger.info(s"Successfully retrieved ${slackUsers.length} users from Slack")
       usersWithSlack       =  addSlackIDsToUsers(umpUsers, slackUsers)
       umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
       _                    =  logger.info("Successfully retrieved team names from UMP")
