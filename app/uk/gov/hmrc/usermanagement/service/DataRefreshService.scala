@@ -72,14 +72,14 @@ class DataRefreshService @Inject()(
     slackRepository.findAll().map: allSlackUsers =>
       val slackUsersByEmail =
         allSlackUsers
-          .filter(_.email.isDefined)
-          .groupBy(_.email.get)
-          .view.mapValues(_.head)
+          .collect:
+            case user if user.email.isDefined => user.email.get -> user
+          .toMap
 
       val slackUsersByUsername =
         allSlackUsers
-          .groupBy(_.name)
-          .view.mapValues(_.head)
+          .map(user => user.name -> user)
+          .toMap
 
       umpUsers.map: user =>
         val slackUserOpt =
