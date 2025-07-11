@@ -18,7 +18,9 @@ package uk.gov.hmrc.usermanagement
 
 import com.google.inject.AbstractModule
 import uk.gov.hmrc.usermanagement.scheduler.DataRefreshScheduler
+import uk.gov.hmrc.usermanagement.scheduler.SlackUsersScheduler
 
 class Module extends AbstractModule:
   override def configure(): Unit = 
     bind(classOf[DataRefreshScheduler]).asEagerSingleton()
+    bind(classOf[SlackUsersScheduler] ).asEagerSingleton()

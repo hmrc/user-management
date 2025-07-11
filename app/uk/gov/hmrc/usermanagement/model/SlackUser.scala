@@ -19,10 +19,27 @@ package uk.gov.hmrc.usermanagement.model
 import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 
-final case class SlackUser(email: Option[String], id: String)
+final case class SlackUser(
+  email    : Option[String],
+  id       : String,
+  name     : String,
+  isBot    : Boolean,
+  isDeleted: Boolean
+)
 
 object SlackUser:
-  val format: Format[SlackUser] =
-    ( (__ \ "profile" \ "email").formatNullable[String]
-    ~ (__ \ "id"               ).format[String]
-    )(SlackUser.apply, pt => Tuple.fromProductTyped(pt))
+  val apiReads: Reads[SlackUser] =
+    ( (__ \ "profile" \ "email").readNullable[String]
+    ~ (__ \ "id"               ).read[String]
+    ~ (__ \ "name"             ).read[String]
+    ~ (__ \ "is_bot"           ).read[Boolean]
+    ~ (__ \ "deleted"          ).read[Boolean]
+    )(SlackUser.apply)
+
+  val mongoFormat: Format[SlackUser] =
+    ( (__ \ "email"    ).formatNullable[String]
+    ~ (__ \ "id"       ).format[String]
+    ~ (__ \ "name"     ).format[String]
+    ~ (__ \ "isBot"    ).format[Boolean]
+    ~ (__ \ "isDeleted").format[Boolean]
+    )(SlackUser.apply, su => Tuple.fromProductTyped(su))

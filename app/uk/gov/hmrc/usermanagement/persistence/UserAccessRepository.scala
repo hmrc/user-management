@@ -38,7 +38,7 @@ class UserAccessRepository @Inject()(
   indexes        = Seq(
                      IndexModel(
                        Indexes.ascending("username"),
-                       IndexOptions().unique(true).background(true)
+                       IndexOptions().unique(true)
                      ),
                      IndexModel(
                        Indexes.descending("createdAt"),

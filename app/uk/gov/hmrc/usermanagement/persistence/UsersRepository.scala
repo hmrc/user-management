@@ -35,10 +35,10 @@ class UsersRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = User.format,
   indexes        = Seq(
-                     IndexModel(Indexes.ascending("username")      , IndexOptions().unique(true).background(true)),
-                     IndexModel(Indexes.ascending("githubUsername"), IndexOptions().unique(false).background(true)),
-                     IndexModel(Indexes.ascending("isDeleted")     , IndexOptions().unique(false).background(true)),
-                     IndexModel(Indexes.ascending("isNonHuman")    , IndexOptions().unique(false).background(true))
+                     IndexModel(Indexes.ascending("username")      , IndexOptions().unique(true) ),
+                     IndexModel(Indexes.ascending("githubUsername"), IndexOptions().unique(false)),
+                     IndexModel(Indexes.ascending("isDeleted")     , IndexOptions().unique(false)),
+                     IndexModel(Indexes.ascending("isNonHuman")    , IndexOptions().unique(false))
                    )
 ):
 

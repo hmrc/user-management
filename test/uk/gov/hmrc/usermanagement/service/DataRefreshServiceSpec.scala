@@ -27,13 +27,13 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import uk.gov.hmrc.usermanagement.persistence.SlackUsersRepository
 
 class DataRefreshServiceSpec
   extends AnyWordSpec
@@ -79,8 +79,8 @@ class DataRefreshServiceSpec
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
 
-      when(slackConnector.getAllSlackUsers())
-        .thenReturn(Future.successful(Seq(SlackUser(email= Some("jane.doe@gmail.com"), id= "ABCD"))))
+      when(slackRepository.findAll())
+        .thenReturn(Future.successful(Seq(SlackUser(email= Some("jane.doe@gmail.com"), id= "ABCD", name = "jane.doe", isBot = false, isDeleted = false))))
 
       service.updateUsersAndTeams().futureValue
 
@@ -128,7 +128,7 @@ class DataRefreshServiceSpec
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
 
-      when(slackConnector.getAllSlackUsers())
+      when(slackRepository.findAll())
         .thenReturn(Future.successful(Seq.empty[SlackUser]))
 
       service.updateUsersAndTeams().futureValue
@@ -177,10 +177,11 @@ trait Setup:
   val umpConnector    = mock[UmpConnector]
   val usersRepository = mock[UsersRepository]
   val teamsRepository = mock[TeamsRepository]
+  val slackRepository = mock[SlackUsersRepository]
   val slackConnector  = mock[SlackConnector]
-  val schedulerConfig = SchedulerConfig(Configuration(ConfigFactory.load("application.conf")))
+  val config          = Configuration(ConfigFactory.load("application.conf"))
 
-  val service: DataRefreshService = DataRefreshService(umpConnector, usersRepository, teamsRepository, schedulerConfig, slackConnector)
+  val service: DataRefreshService = DataRefreshService(umpConnector, usersRepository, teamsRepository, slackRepository, config, slackConnector)
 
   when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
