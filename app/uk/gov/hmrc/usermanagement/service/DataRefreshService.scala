@@ -16,36 +16,39 @@
 
 package uk.gov.hmrc.usermanagement.service
 
+import cats.implicits.*
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.usermanagement.config.SchedulerConfig
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
-import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
+import uk.gov.hmrc.usermanagement.persistence.{SlackUsersRepository, TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.FiniteDuration
 
 @Singleton
 class DataRefreshService @Inject()(
   umpConnector   : UmpConnector,
   usersRepository: UsersRepository,
   teamsRepository: TeamsRepository,
-  config         : SchedulerConfig,
+  slackRepository: SlackUsersRepository,
+  config         : Configuration,
   slackConnector : SlackConnector
 )(using
   ExecutionContext
 ) extends Logging:
 
+  private lazy val umpRequestThrottle: FiniteDuration =
+    config.get[FiniteDuration]("ump.requestThrottle")
+
   def updateUsersAndTeams()(using Materializer, HeaderCarrier): Future[Unit] =
     for
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info(s"Successfully retrieved ${umpUsers.length} users from UMP")
-      slackUsers           <- slackConnector.getAllSlackUsers()
-      _                    =  logger.info(s"Successfully retrieved ${slackUsers.length} users from Slack")
-      usersWithSlack       =  addSlackIDsToUsers(umpUsers, slackUsers)
+      usersWithSlack       <- addSlackIDsToUsers(umpUsers)
       umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
       _                    =  logger.info("Successfully retrieved team names from UMP")
       teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
@@ -59,16 +62,29 @@ class DataRefreshService @Inject()(
       _                    =  logger.info("Successfully refreshed teams data from UMP.")
     yield ()
 
-  private def addSlackIDsToUsers(umpUsers: Seq[User], slackUsers: Seq[SlackUser]): Seq[User] =
-    umpUsers.map: umpUser =>
-      val slackUser = slackUsers.find(_.email.exists(_ == umpUser.primaryEmail))
-      umpUser.copy(slackId = slackUser.map(_.id))
+  def updateSlackUsers()(using Materializer, HeaderCarrier): Future[Unit] =
+    for
+      slackUsers <- slackConnector.getAllSlackUsers()
+      _          <- slackRepository.putAll(slackUsers)
+      _          =  logger.info(s"Successfully refreshed slack users, count: ${slackUsers.length}")
+    yield ()
+
+  private def addSlackIDsToUsers(umpUsers: Seq[User]): Future[Seq[User]] =
+    umpUsers.foldLeftM(Seq.empty[User]):
+      (acc, user) =>
+        slackRepository.findByEmail(user.primaryEmail).map:
+          case Some(slackUser) =>
+            acc :+ user.copy(slackId = Some(slackUser.id))
+          case None =>
+            // TODO should we try and match username as a fallback?
+            // slackRepository.findByName(user.username)
+            acc:+ user
 
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
   private def getTeamsWithMembers(teams: Seq[String])(using Materializer, HeaderCarrier): Future[Seq[Team]] =
     Source(teams)
-      .throttle(1, config.requestThrottle)
+      .throttle(1, umpRequestThrottle)
       .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))
       .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
       .map(_.flatten)

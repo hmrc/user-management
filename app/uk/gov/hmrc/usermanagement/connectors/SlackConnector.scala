@@ -20,7 +20,7 @@ import org.apache.pekko.stream.scaladsl.Source
 import org.apache.pekko.stream.Materializer
 import play.api.Configuration
 import play.api.libs.functional.syntax.*
-import play.api.libs.json.{Format, __}
+import play.api.libs.json.{Reads, __}
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
@@ -28,7 +28,7 @@ import uk.gov.hmrc.usermanagement.model.SlackUser
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration
 
 @Singleton
 class SlackConnector @Inject()(
@@ -46,8 +46,11 @@ class SlackConnector @Inject()(
   private lazy val limit: Int =
     configuration.get[Int]("slack.limit")
 
+  private lazy val requestThrottle: FiniteDuration =
+    configuration.get[FiniteDuration]("slack.requestThrottle")
+
   private def getSlackUsersPage(cursor: String)(using HeaderCarrier): Future[SlackUserListPage] =
-    given Format[SlackUserListPage] = SlackUserListPage.format
+    given Reads[SlackUserListPage] = SlackUserListPage.reads
     httpClientV2
       .get(url"$apiUrl/users.list?limit=$limit&cursor=$cursor")
       .setHeader("Authorization" -> s"Bearer $token")
@@ -62,7 +65,7 @@ class SlackConnector @Inject()(
           if   result.nextCursor.isEmpty()
           then Some((None, result))
           else Some((Some(result.nextCursor), result))
-    .throttle(1, 4.second) // https://api.slack.com/methods/users.list is API limit tier 2 which is 20 per minute
+    .throttle(1, requestThrottle) // https://api.slack.com/methods/users.list is API limit tier 2 which is 20 per minute
     .runFold(Seq.empty[SlackUser]): (acc, page) =>
       acc ++ page.members
 
@@ -74,8 +77,8 @@ private final case class SlackUserListPage(
 )
 
 private object SlackUserListPage:
-  given Format[SlackUser] = SlackUser.format
-  val format: Format[SlackUserListPage] =
-    ( (__ \ "members"                          ).format[Seq[SlackUser]]
-    ~ (__ \ "response_metadata" \ "next_cursor").format[String]
-    )(SlackUserListPage.apply, pt => Tuple.fromProductTyped(pt))
+  given Reads[SlackUser] = SlackUser.apiReads
+  val reads: Reads[SlackUserListPage] =
+    ( (__ \ "members"                          ).read[Seq[SlackUser]]
+    ~ (__ \ "response_metadata" \ "next_cursor").read[String]
+    )(SlackUserListPage.apply)

@@ -43,6 +43,7 @@ class SlackConnectorSpec
        |slack.apiUrl = "$wireMockUrl"
        |slack.token  = token
        |slack.limit  = 2
+       |slack.requestThrottle = 4.seconds
        |""".stripMargin
   )
 
@@ -65,10 +66,16 @@ class SlackConnectorSpec
                    |  "members": [
                    |    {
                    |      "id": "id_A",
+                   |      "name": "user.one",
+                   |      "is_bot": false,
+                   |      "deleted": false,
                    |      "profile": {}
                    |    },
                    |    {
                    |      "id": "id_B",
+                   |      "name": "user.two",
+                   |      "is_bot": false,
+                   |      "deleted": false,
                    |      "profile": {
                    |        "email": "B@gmail.com"
                    |      }
@@ -94,6 +101,9 @@ class SlackConnectorSpec
                    |  "members": [
                    |    {
                    |      "id": "id_C",
+                   |      "name": "user.thr",
+                   |      "is_bot": false,
+                   |      "deleted": false,
                    |      "profile": {
                    |        "email": "C@gmail.com"
                    |      }
@@ -108,9 +118,9 @@ class SlackConnectorSpec
           )
       )
       connector.getAllSlackUsers().futureValue shouldBe Seq(
-        SlackUser(email = None               , id = "id_A"),
-        SlackUser(email = Some("B@gmail.com"), id = "id_B"),
-        SlackUser(email = Some("C@gmail.com"), id = "id_C"),
+        SlackUser(email = None               , id = "id_A", name = "user.one", isBot = false, isDeleted = false),
+        SlackUser(email = Some("B@gmail.com"), id = "id_B", name = "user.two", isBot = false, isDeleted = false),
+        SlackUser(email = Some("C@gmail.com"), id = "id_C", name = "user.thr", isBot = false, isDeleted = false),
       )
 end SlackConnectorSpec
 

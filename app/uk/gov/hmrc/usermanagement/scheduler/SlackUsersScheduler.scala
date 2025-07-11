@@ -28,7 +28,7 @@ import uk.gov.hmrc.usermanagement.service.DataRefreshService
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 
-class DataRefreshScheduler @Inject()(
+class SlackUsersScheduler @Inject()(
   dataRefreshService  : DataRefreshService,
   config              : SchedulerConfigs,
   mongoLockRepository : MongoLockRepository,
@@ -39,26 +39,26 @@ class DataRefreshScheduler @Inject()(
 , ExecutionContext
 ) extends SchedulerUtils with Logging:
 
-  private val dataRefreshLock: ScheduledLockService =
+  private val slackUsersLock: ScheduledLockService =
     ScheduledLockService(
       lockRepository    = mongoLockRepository,
-      lockId            = "user-management-data-refresh-lock",
+      lockId            = "user-management-slack-users-lock",
       timestampSupport  = timestampSupport,
-      schedulerInterval = config.dataRefreshScheduler.interval
+      schedulerInterval = config.slackUsersScheduler.interval
     )
 
-  scheduleWithLock("User Management Data Refresh", config.dataRefreshScheduler, dataRefreshLock):
+  scheduleWithLock("User Management Slack Users", config.slackUsersScheduler, slackUsersLock):
     given HeaderCarrier = HeaderCarrier()
     for 
-      _ <- Future.successful(logger.info("Beginning user management data refresh"))
-      _ <- dataRefreshService.updateUsersAndTeams()
+      _ <- Future.successful(logger.info("Beginning user management slack users refresh"))
+      _ <- dataRefreshService.updateSlackUsers()
     yield ()
 
   def manualReload()(using HeaderCarrier): Future[Unit] =
-    dataRefreshLock
+    slackUsersLock
       .withLock:
-        logger.info("Data refresh has been manually triggered")
-        dataRefreshService.updateUsersAndTeams()
+        logger.info("Slack users refresh has been manually triggered")
+        dataRefreshService.updateSlackUsers()
       .map:
-        _.getOrElse(logger.info(s"The Reload process is locked for ${dataRefreshLock.lockId}"))
-end DataRefreshScheduler
+        _.getOrElse(logger.info(s"The slack users refresh process is locked for ${slackUsersLock.lockId}"))
+end SlackUsersScheduler
