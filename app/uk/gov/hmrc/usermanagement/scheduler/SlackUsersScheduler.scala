@@ -17,12 +17,11 @@
 package uk.gov.hmrc.usermanagement.scheduler
 
 import org.apache.pekko.actor.ActorSystem
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
-import uk.gov.hmrc.usermanagement.config.SchedulerConfigs
 import uk.gov.hmrc.usermanagement.service.DataRefreshService
 
 import javax.inject.Inject
@@ -30,7 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class SlackUsersScheduler @Inject()(
   dataRefreshService  : DataRefreshService,
-  config              : SchedulerConfigs,
+  configuration       : Configuration,
   mongoLockRepository : MongoLockRepository,
   timestampSupport    : TimestampSupport
 )(using
@@ -39,15 +38,18 @@ class SlackUsersScheduler @Inject()(
 , ExecutionContext
 ) extends SchedulerUtils with Logging:
 
+  private val schedulerConfig =
+    SchedulerConfig(configuration, "scheduler.slackUsers")
+
   private val slackUsersLock: ScheduledLockService =
     ScheduledLockService(
       lockRepository    = mongoLockRepository,
       lockId            = "user-management-slack-users-lock",
       timestampSupport  = timestampSupport,
-      schedulerInterval = config.slackUsersScheduler.interval
+      schedulerInterval = schedulerConfig.interval
     )
 
-  scheduleWithLock("User Management Slack Users", config.slackUsersScheduler, slackUsersLock):
+  scheduleWithLock("User Management Slack Users", schedulerConfig, slackUsersLock):
     given HeaderCarrier = HeaderCarrier()
     for 
       _ <- Future.successful(logger.info("Beginning user management slack users refresh"))

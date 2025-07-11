@@ -37,7 +37,7 @@ class TeamsRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = Team.format,
   indexes        = Seq(
-                     IndexModel(Indexes.ascending("teamName"), IndexOptions().unique(true).background(true).collation(caseInsensitiveCollation)),
+                     IndexModel(Indexes.ascending("teamName"), IndexOptions().unique(true).collation(caseInsensitiveCollation)),
                    )
 ):
   // No ttl required for this collection - putAll cleans out stale data

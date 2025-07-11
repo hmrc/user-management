@@ -35,8 +35,8 @@ class SlackUsersRepository @Inject()(
   mongoComponent = mongoComponent,
   domainFormat   = SlackUser.mongoFormat,
   indexes        = Seq(
-                     IndexModel(Indexes.ascending("id")   , IndexOptions().unique(true).background(true)),
-                     IndexModel(Indexes.ascending("email"), IndexOptions().sparse(true).background(true))
+                     IndexModel(Indexes.ascending("id")   , IndexOptions().unique(true)),
+                     IndexModel(Indexes.ascending("email"), IndexOptions().sparse(true))
                    )
 ):
 
@@ -66,10 +66,6 @@ class SlackUsersRepository @Inject()(
                        else collection.bulkWrite(bulkUpdates).toFuture().map(_=> ())
       yield ()
 
-    def findByEmail(email: String): Future[Option[SlackUser]] =
-      collection
-        .find(
-          Filters.equal("email", email)
-        )
-        .headOption()
+    def findAll(): Future[Seq[SlackUser]] =
+      collection.find().toFuture()
         

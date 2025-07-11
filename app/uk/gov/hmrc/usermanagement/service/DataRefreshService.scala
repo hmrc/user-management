@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.usermanagement.service
 
-import cats.implicits.*
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import play.api.{Configuration, Logging}
@@ -48,7 +47,7 @@ class DataRefreshService @Inject()(
     for
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info(s"Successfully retrieved ${umpUsers.length} users from UMP")
-      usersWithSlack       <- addSlackIDsToUsers(umpUsers)
+      usersWithSlack       <- addSlackIdsToUsers(umpUsers)
       umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
       _                    =  logger.info("Successfully retrieved team names from UMP")
       teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
@@ -69,16 +68,27 @@ class DataRefreshService @Inject()(
       _          =  logger.info(s"Successfully refreshed slack users, count: ${slackUsers.length}")
     yield ()
 
-  private def addSlackIDsToUsers(umpUsers: Seq[User]): Future[Seq[User]] =
-    umpUsers.foldLeftM(Seq.empty[User]):
-      (acc, user) =>
-        slackRepository.findByEmail(user.primaryEmail).map:
-          case Some(slackUser) =>
-            acc :+ user.copy(slackId = Some(slackUser.id))
-          case None =>
-            // TODO should we try and match username as a fallback?
-            // slackRepository.findByName(user.username)
-            acc:+ user
+  private def addSlackIdsToUsers(umpUsers: Seq[User]): Future[Seq[User]] =
+    slackRepository.findAll().map: allSlackUsers =>
+      val slackUsersByEmail =
+        allSlackUsers
+          .filter(_.email.isDefined)
+          .groupBy(_.email.get)
+          .view.mapValues(_.head)
+
+      val slackUsersByUsername =
+        allSlackUsers
+          .groupBy(_.name)
+          .view.mapValues(_.head)
+
+      umpUsers.map: user =>
+        val slackUserOpt =
+          slackUsersByEmail.get(user.primaryEmail)
+            .orElse(slackUsersByUsername.get(user.username))
+
+        slackUserOpt match
+          case Some(slackUser) => user.copy(slackId = Some(slackUser.id))
+          case None => user
 
   //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
   //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.

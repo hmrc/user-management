@@ -79,11 +79,8 @@ class DataRefreshServiceSpec
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
 
-      when(slackRepository.findByEmail("jane.doe@gmail.com"))
-        .thenReturn(Future.successful(Some(SlackUser(email= Some("jane.doe@gmail.com"), id= "ABCD", name = "jane.doe", isBot = false, isDeleted = false))))
-
-      when(slackRepository.findByEmail("joe.bloggs@gmail.com"))
-        .thenReturn(Future.successful(Option.empty[SlackUser]))
+      when(slackRepository.findAll())
+        .thenReturn(Future.successful(Seq(SlackUser(email= Some("jane.doe@gmail.com"), id= "ABCD", name = "jane.doe", isBot = false, isDeleted = false))))
 
       service.updateUsersAndTeams().futureValue
 
@@ -131,8 +128,8 @@ class DataRefreshServiceSpec
           members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
         ))))
 
-      when(slackRepository.findByEmail(any))
-        .thenReturn(Future.successful(Option.empty[SlackUser]))
+      when(slackRepository.findAll())
+        .thenReturn(Future.successful(Seq.empty[SlackUser]))
 
       service.updateUsersAndTeams().futureValue
 

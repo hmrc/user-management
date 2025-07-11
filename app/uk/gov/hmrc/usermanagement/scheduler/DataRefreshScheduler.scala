@@ -17,12 +17,11 @@
 package uk.gov.hmrc.usermanagement.scheduler
 
 import org.apache.pekko.actor.ActorSystem
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
-import uk.gov.hmrc.usermanagement.config.SchedulerConfigs
 import uk.gov.hmrc.usermanagement.service.DataRefreshService
 
 import javax.inject.Inject
@@ -30,7 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class DataRefreshScheduler @Inject()(
   dataRefreshService  : DataRefreshService,
-  config              : SchedulerConfigs,
+  configuration       : Configuration,
   mongoLockRepository : MongoLockRepository,
   timestampSupport    : TimestampSupport
 )(using
@@ -39,15 +38,18 @@ class DataRefreshScheduler @Inject()(
 , ExecutionContext
 ) extends SchedulerUtils with Logging:
 
+  private val schedulerConfig =
+    SchedulerConfig(configuration, "scheduler.dataRefresh")
+
   private val dataRefreshLock: ScheduledLockService =
     ScheduledLockService(
       lockRepository    = mongoLockRepository,
       lockId            = "user-management-data-refresh-lock",
       timestampSupport  = timestampSupport,
-      schedulerInterval = config.dataRefreshScheduler.interval
+      schedulerInterval = schedulerConfig.interval
     )
 
-  scheduleWithLock("User Management Data Refresh", config.dataRefreshScheduler, dataRefreshLock):
+  scheduleWithLock("User Management Data Refresh", schedulerConfig, dataRefreshLock):
     given HeaderCarrier = HeaderCarrier()
     for 
       _ <- Future.successful(logger.info("Beginning user management data refresh"))
