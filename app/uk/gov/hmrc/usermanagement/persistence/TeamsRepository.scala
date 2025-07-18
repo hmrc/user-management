@@ -17,11 +17,11 @@
 package uk.gov.hmrc.usermanagement.persistence
 
 import org.mongodb.scala.model.*
+import uk.gov.hmrc.mdc.MdcImplicits.*
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.{Member, Team}
 import org.mongodb.scala.model.Filters.{equal, or}
-import org.mongodb.scala.ObservableFuture
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository.caseInsensitiveCollation
 
 import javax.inject.{Inject, Singleton}
@@ -54,7 +54,7 @@ class TeamsRepository @Inject()(
                            Filters.equal("teamName", entry.teamName),
                            entry,
                            ReplaceOptions().upsert(true).collation(caseInsensitiveCollation)
-                         ) 
+                         )
                        ++
                      // delete any that are no longer present
                        old.filterNot(t => teams.exists(_.teamName == t.teamName))
@@ -85,7 +85,7 @@ class TeamsRepository @Inject()(
       )
       .toFuture()
       .map(_ => ())
-    
+
   def deleteOne(teamName: String): Future[Unit] =
     collection
       .deleteOne(
@@ -104,6 +104,7 @@ class TeamsRepository @Inject()(
       )
       .collation(caseInsensitiveCollation)
       .headOption()
+      .preservingMdc
 
   def updateTeamDetails(
     teamName         : String,
