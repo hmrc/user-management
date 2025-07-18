@@ -17,7 +17,7 @@
 package uk.gov.hmrc.usermanagement.persistence
 
 import org.mongodb.scala.model.{Filters, IndexModel, IndexOptions, Indexes, ReplaceOneModel, ReplaceOptions, DeleteOneModel}
-import org.mongodb.scala.ObservableFuture
+import uk.gov.hmrc.mdc.MdcImplicits.*
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.User
@@ -118,4 +118,6 @@ class UsersRepository @Inject()(
     collection
       .find(Filters.equal("username", username))
       .headOption()
+      .preservingMdc
+
 end UsersRepository

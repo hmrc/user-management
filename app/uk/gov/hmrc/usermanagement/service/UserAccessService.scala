@@ -35,7 +35,7 @@ class UserAccessService @Inject()(
 ) extends Logging:
 
   def getUserAccess(username: String)(using HeaderCarrier): Future[Option[UserAccess]] =
-    userAccessRepository.findByUsername(username).flatMap:
+    userAccessRepository.findByUsername(username).flatMap: // has a short cache
       case Some(userWithAccess) =>
         Future.successful(Some(userWithAccess.access))
       case None =>
@@ -46,19 +46,9 @@ class UserAccessService @Inject()(
             Future.successful(None)
 
   def manageVpnAccess(username: String, enableVpn: Boolean)(using HeaderCarrier): Future[Unit] =
-    umpConnector.manageVpnAccess(username, enableVpn).flatMap: _ =>
-      umpConnector.getUserAccess(username).flatMap:
-        case Some(userAccess) =>
-          userAccessRepository.put(UserWithAccess(username, userAccess, Instant.now())).map(_ => ())
-        case None =>
-          Future.unit
+    umpConnector.manageVpnAccess(username, enableVpn) // Async process
 
   def manageDevToolsAccess(username: String, enableDevTools: Boolean)(using HeaderCarrier): Future[Unit] =
-    umpConnector.manageDevToolsAccess(username, enableDevTools).flatMap: _ =>
-      umpConnector.getUserAccess(username).flatMap:
-        case Some(userAccess) =>
-          userAccessRepository.put(UserWithAccess(username, userAccess, Instant.now())).map(_ => ())
-        case None =>
-          Future.unit
+    umpConnector.manageDevToolsAccess(username, enableDevTools) // Async process
 
 end UserAccessService

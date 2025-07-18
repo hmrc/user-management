@@ -17,7 +17,6 @@
 package uk.gov.hmrc.usermanagement.persistence
 
 import org.mongodb.scala.model.*
-import org.mongodb.scala.ObservableFuture
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.SlackUser
@@ -44,7 +43,7 @@ class SlackUsersRepository @Inject()(
     override lazy val requiresTtlIndex = false
 
     def putAll(users: Seq[SlackUser]): Future[Unit] =
-      for 
+      for
         old         <- collection.find().toFuture()
         bulkUpdates =  //upsert any that were not present already
                        users
@@ -68,4 +67,3 @@ class SlackUsersRepository @Inject()(
 
     def findAll(): Future[Seq[SlackUser]] =
       collection.find().toFuture()
-        

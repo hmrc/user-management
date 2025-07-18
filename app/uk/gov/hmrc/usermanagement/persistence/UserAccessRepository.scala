@@ -16,8 +16,8 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
-import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.model.*
+import uk.gov.hmrc.mdc.MdcImplicits.*
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
 import uk.gov.hmrc.usermanagement.model.UserWithAccess
@@ -28,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class UserAccessRepository @Inject()(
- mongoComponent: MongoComponent
+  mongoComponent: MongoComponent
 )(using
   ExecutionContext
 ) extends PlayMongoRepository(
@@ -42,7 +42,7 @@ class UserAccessRepository @Inject()(
                      ),
                      IndexModel(
                        Indexes.descending("createdAt"),
-                       IndexOptions().name("createdAtIdx").unique(false).expireAfter(43200, TimeUnit.SECONDS) //12hr TTL
+                       IndexOptions().name("createdAtIdx").unique(false).expireAfter(5 * 60, TimeUnit.SECONDS)
                      )
                    )
 ):
@@ -78,5 +78,6 @@ class UserAccessRepository @Inject()(
     collection
       .find(Filters.equal("username", username))
       .headOption()
+      .preservingMdc
 
 end UserAccessRepository
