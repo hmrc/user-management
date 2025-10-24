@@ -226,7 +226,7 @@ class UserManagementController @Inject()(
                 if (!team.members.exists(_.username == user.username))
                   for
                     _           <- umpConnector.addUserToTeam(request.body.team, request.body.username)
-                    updatedTeam =  team.copy(members = team.members :+ Member(user.username, user.displayName, user.role, user.isNonHuman))
+                    updatedTeam =  team.copy(members = team.members :+ Member(user.username, user.displayName, user.primaryEmail, user.role, user.isNonHuman))
                     updatedUser =  user.copy(teamNames = user.teamNames :+ team.teamName)
                     _           <- teamsRepository.updateOne(updatedTeam)
                     _           <- usersRepository.updateOne(updatedUser)

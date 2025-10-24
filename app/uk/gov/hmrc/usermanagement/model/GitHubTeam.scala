@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 HM Revenue & Customs
+ * Copyright 2024 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.usermanagement
+package uk.gov.hmrc.usermanagement.model
 
-import com.google.inject.AbstractModule
-import uk.gov.hmrc.usermanagement.scheduler.{DataRefreshScheduler, SlackChannelScheduler, SlackUsersScheduler}
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.{Reads, __}
 
-class Module extends AbstractModule:
-  override def configure(): Unit = 
-    bind(classOf[DataRefreshScheduler] ).asEagerSingleton()
-    bind(classOf[SlackUsersScheduler]  ).asEagerSingleton()
-    bind(classOf[SlackChannelScheduler]).asEagerSingleton()
+import java.time.Instant
+
+case class GitHubTeam(name: TeamName, lastActiveDate: Option[Instant], repos: Seq[String])
+
+object GitHubTeam:
+  val reads: Reads[GitHubTeam] =
+    given Reads[TeamName] = TeamName.reads
+    ( (__ \ "name"          ).read[TeamName]
+    ~ (__ \ "lastActiveDate").readNullable[Instant]
+    ~ (__ \ "repos"         ).read[Seq[String]]
+    )(GitHubTeam.apply _)

@@ -40,16 +40,18 @@ object Team:
     )(Team.apply, pt => Tuple.fromProductTyped(pt))
   
 case class Member(
-  username   : String,
-  displayName: Option[String],
-  role       : String,
-  isNonHuman : Boolean
+  username    : String,
+  displayName : Option[String],
+  primaryEmail: String,
+  role        : String,
+  isNonHuman  : Boolean
 )
 
 object Member:
   val format: OFormat[Member] =
-    ( (__ \ "username"   ).format[String]
-    ~ (__ \ "displayName").formatNullable[String]
-    ~ (__ \ "role"       ).format[String]
-    ~ (__ \ "isNonHuman" ).formatWithDefault[Boolean](false)
+    ( (__ \ "username"    ).format[String]
+    ~ (__ \ "displayName" ).formatNullable[String]
+    ~ (__ \ "primaryEmail").formatWithDefault[String]("Unknown") // Required until the DataRefreshScheduler runs and backfills existing data
+    ~ (__ \ "role"        ).format[String]
+    ~ (__ \ "isNonHuman"  ).formatWithDefault[Boolean](false)
     )(Member.apply, pt => Tuple.fromProductTyped(pt))

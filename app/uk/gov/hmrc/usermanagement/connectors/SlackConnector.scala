@@ -16,19 +16,20 @@
 
 package uk.gov.hmrc.usermanagement.connectors
 
-import org.apache.pekko.stream.scaladsl.Source
 import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.Source
 import play.api.Configuration
 import play.api.libs.functional.syntax.*
-import play.api.libs.json.{Reads, __}
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
+import play.api.libs.json.{JsValue, Json, Reads, __}
+import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
 import uk.gov.hmrc.usermanagement.model.SlackUser
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SlackConnector @Inject()(
@@ -69,16 +70,125 @@ class SlackConnector @Inject()(
     .runFold(Seq.empty[SlackUser]): (acc, page) =>
       acc ++ page.members
 
+  def lookupUserByEmail(email: String)(using HeaderCarrier): Future[Option[SlackUser]] =
+    given Reads[SlackUserResponse] = SlackUserResponse.reads
+
+    httpClientV2
+      .get(url"$apiUrl/users.lookupByEmail?email=$email")
+      .setHeader("Authorization" -> s"Bearer $token")
+      .withProxy
+      .execute[SlackUserResponse]
+      .map(r => if r.ok then r.user else None)
+    
+  private def getSlackChannelsPage(cursor: String)(using HeaderCarrier): Future[SlackChannelListPage] =
+    given Reads[SlackChannelListPage] = SlackChannelListPage.reads
+    httpClientV2
+      .get(url"$apiUrl/conversations.list?limit=$limit&cursor=$cursor&exclude_archived=true&types=public_channel,private_channel")
+      .setHeader("Authorization" -> s"Bearer $token")
+      .withProxy
+      .execute[SlackChannelListPage]
+
+  def listAllChannels()(using Materializer, HeaderCarrier): Future[Seq[SlackChannel]] =
+    Source
+      .unfoldAsync(Option(""): Option[String]):
+        case None         => Future.successful(None)
+        case Some(cursor) =>
+          getSlackChannelsPage(cursor).map: result =>
+            if result.nextCursor.isEmpty then Some((None, result))
+            else Some((Some(result.nextCursor), result))
+      .throttle(1, requestThrottle)
+      .runFold(Seq.empty[SlackChannel]): (acc, page) =>
+        acc ++ page.channels
+
+  def createChannel(name: String)(using HeaderCarrier): Future[Option[SlackChannel]] =
+    given Reads[SlackChannelResponse] = SlackChannelResponse.reads
+    httpClientV2
+      .post(url"$apiUrl/conversations.create")
+      .setHeader("Authorization" -> s"Bearer $token")
+      .withBody(Json.obj("name" -> name))
+      .withProxy
+      .execute[SlackChannelResponse]
+      .map(_.channel)
+
+  def inviteUsersToChannel(channelId: String, userIds: Seq[String])(using HeaderCarrier): Future[Unit] =
+    if userIds.isEmpty then Future.unit
+    else
+      httpClientV2
+        .post(url"$apiUrl/conversations.invite")
+        .setHeader("Authorization" -> s"Bearer $token")
+        .withBody(Json.obj("channel" -> channelId, "users" -> userIds.mkString(",")))
+        .withProxy
+        .execute[JsValue]
+        .map(_ => ())
+
+
+  def listChannelMembers(channelId: String)(using HeaderCarrier): Future[Seq[String]] =
+    given Reads[SlackChannelMembersResponse] = SlackChannelMembersResponse.reads
+    httpClientV2
+      .get(url"$apiUrl/conversations.members?channel=$channelId")
+      .setHeader("Authorization" -> s"Bearer $token")
+      .withProxy
+      .execute[SlackChannelMembersResponse]
+      .map(_.members)
+
 end SlackConnector
 
 private final case class SlackUserListPage(
   members   : Seq[SlackUser],
   nextCursor: String
 )
-
 private object SlackUserListPage:
   given Reads[SlackUser] = SlackUser.apiReads
   val reads: Reads[SlackUserListPage] =
     ( (__ \ "members"                          ).read[Seq[SlackUser]]
     ~ (__ \ "response_metadata" \ "next_cursor").read[String]
     )(SlackUserListPage.apply)
+
+final case class SlackChannel(id: String, name: String)
+
+object SlackChannel:
+  val reads: Reads[SlackChannel] =
+    ( (__ \ "id"  ).read[String]
+    ~ (__ \ "name").read[String]
+    )(SlackChannel.apply)
+
+private final case class SlackChannelListPage(channels: Seq[SlackChannel], nextCursor: String)
+
+private object SlackChannelListPage:
+  given Reads[SlackChannel] = SlackChannel.reads
+  val reads: Reads[SlackChannelListPage] =
+    ( (__ \ "channels"                         ).read[Seq[SlackChannel]]
+    ~ (__ \ "response_metadata" \ "next_cursor").read[String]
+    )(SlackChannelListPage.apply)
+
+case class SlackChannelResponse(
+  ok     : Boolean,
+  channel: Option[SlackChannel],
+  error  : Option[String]
+)
+
+object SlackChannelResponse:
+  given Reads[SlackChannel] = SlackChannel.reads
+  val reads: Reads[SlackChannelResponse] =
+    ( (__ \ "ok"     ).read[Boolean]
+    ~ (__ \ "channel").readNullable[SlackChannel]
+    ~ (__ \ "error"  ).readNullable[String]
+    )(SlackChannelResponse.apply)
+
+private final case class SlackChannelMembersResponse(members: Seq[String])
+
+private object SlackChannelMembersResponse:
+  val reads: Reads[SlackChannelMembersResponse] =
+    (__ \ "members").read[Seq[String]].map(SlackChannelMembersResponse.apply)
+
+case class SlackUserResponse(
+  ok  : Boolean,
+  user: Option[SlackUser]
+)
+
+object SlackUserResponse:
+  given Reads[SlackUser] = SlackUser.apiReads
+  val reads: Reads[SlackUserResponse] =
+    ( (__ \ "ok"  ).read[Boolean]
+    ~ (__ \ "user").readNullable[SlackUser]
+    )(SlackUserResponse.apply)
