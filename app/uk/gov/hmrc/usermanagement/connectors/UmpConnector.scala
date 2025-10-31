@@ -319,7 +319,7 @@ class UmpConnector @Inject()(
           .flatMap:
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
-              
+
   def offboardUsers(offboardUsersRequest: OffBoardUsersRequest)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>
@@ -331,7 +331,7 @@ class UmpConnector @Inject()(
           .flatMap:
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
-            
+
 end UmpConnector
 
 object UmpConnector:
