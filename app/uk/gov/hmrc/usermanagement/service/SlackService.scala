@@ -125,7 +125,7 @@ class SlackService @Inject()(
                                                slack             = Some(channel.name),
                                                slackNotification = team.slackNotification
                                              )
-                                           case SlackChannelType.Notification => 
+                                           case SlackChannelType.Notification =>
                                                EditTeamDetails(
                                                  team              = team.teamName,
                                                  description       = team.description,

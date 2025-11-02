@@ -257,5 +257,4 @@ trait SlackServiceSetup:
   val slackConnector: SlackConnector = mock[SlackConnector]
   val umpConnector  : UmpConnector   = mock[UmpConnector]
   val config        : Configuration  = Configuration(ConfigFactory.load("application.conf"))
-
   val service       : SlackService   = SlackService(slackConnector, umpConnector, config)

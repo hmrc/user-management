@@ -75,16 +75,7 @@ class UserManagementController @Inject()(
       Ok(res)
     }
   }
-
-  def getAllTeamsOld(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
-    teamsRepository.findAll()
-      .map: res =>
-        if includeNonHuman then
-          Ok(Json.toJson(res.sortBy(_.teamName)))
-        else
-          val filtered = res.map(team => team.copy(members = team.members.filterNot(_.isNonHuman)))
-          Ok(Json.toJson(filtered))
-
+  
   def getUserByUsername(username: String): Action[AnyContent] = Action.async:
     usersRepository.findByUsername(username)
       .map:
