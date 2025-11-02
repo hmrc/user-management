@@ -32,6 +32,7 @@ import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpC
 import uk.gov.hmrc.usermanagement.model.*
 import uk.gov.hmrc.usermanagement.persistence.UsersRepository
 
+import uk.gov.hmrc.usermanagement.model.{EditTeamDetails, Member, SlackUser, Team}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -61,7 +62,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops", false))))
 
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser)))
 

@@ -168,7 +168,7 @@ class SlackConnector @Inject()(
 
 end SlackConnector
 
-private case class SlackUserListPage(
+private final case class SlackUserListPage(
   members   : Seq[SlackUser],
   nextCursor: String
 )
@@ -179,15 +179,16 @@ private object SlackUserListPage:
     ~ (__ \ "response_metadata" \ "next_cursor").read[String]
     )(SlackUserListPage.apply)
 
-case class SlackChannel(id: String, name: String)
+final case class SlackChannel(id: String, name: String, isPrivate: Boolean)
 
 object SlackChannel:
   val reads: Reads[SlackChannel] =
-    ( (__ \ "id"  ).read[String]
-    ~ (__ \ "name").read[String]
+    ( (__ \ "id"         ).read[String]
+      ~ (__ \ "name"       ).read[String]
+      ~ (__ \ "is_private" ).read[Boolean]
     )(SlackChannel.apply)
 
-private case class SlackChannelListPage(channels: Seq[SlackChannel], nextCursor: String)
+private final case class SlackChannelListPage(channels: Seq[SlackChannel], nextCursor: String)
 
 private object SlackChannelListPage:
   given Reads[SlackChannel] = SlackChannel.reads

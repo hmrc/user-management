@@ -17,15 +17,17 @@
 package uk.gov.hmrc.usermanagement.controllers
 
 import cats.implicits.*
+import org.apache.pekko.stream.Materializer
 import play.api.Logging
 import play.api.libs.json.*
 import play.api.libs.json.Json.toJson
 import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.http.ErrorResponse
-import uk.gov.hmrc.usermanagement.connectors.UmpConnector
+import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.*
-import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
+import uk.gov.hmrc.usermanagement.persistence.{SlackChannelCacheRepository, TeamsRepository, UsersRepository}
 import uk.gov.hmrc.usermanagement.service.UserAccessService
 
 import javax.inject.{Inject, Singleton}
@@ -33,24 +35,48 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class UserManagementController @Inject()(
-  cc               : ControllerComponents,
-  umpConnector     : UmpConnector,
-  userAccessService: UserAccessService,
-  usersRepository  : UsersRepository,
-  teamsRepository  : TeamsRepository
-)(using
-  ExecutionContext
+    cc                    : ControllerComponents,
+    umpConnector          : UmpConnector,
+    userAccessService     : UserAccessService,
+    usersRepository       : UsersRepository,
+    teamsRepository       : TeamsRepository,
+    slackConnector        : SlackConnector,
+    slackChannelCacheRepository: SlackChannelCacheRepository
+  )(using
+    ExecutionContext, Materializer
 ) extends BackendController(cc) with Logging:
 
   private given Writes[User] = User.format
   private given Writes[Team] = Team.format
-
   def getUsers(team: Option[String], github: Option[String]): Action[AnyContent] = Action.async:
     usersRepository.find(team, github)
       .map: res =>
         Ok(Json.toJson(res.sortBy(_.username)))
 
-  def getAllTeams(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
+  def getAllTeams(includeNonHuman: Boolean): Action[AnyContent] = Action.async { implicit request =>
+    for {
+      teams <- teamsRepository.findAll()
+      teamsWithSlack <- Future.sequence(teams.map { team =>
+        for {
+          slackChannel <- getOrFetchChannelPrivacy(team.slack)
+          slackNotificationChannel <- getOrFetchChannelPrivacy(team.slackNotification)
+        } yield TeamSlackChannelResponse(
+          members = team.members,
+          teamName = team.teamName,
+          description = team.description,
+          documentation = team.documentation,
+          slack = slackChannel,
+          slackNotification = slackNotificationChannel
+        )
+      })
+    } yield {
+      val result = if includeNonHuman then teamsWithSlack else teamsWithSlack.map(t => t.copy(members = t.members.filterNot(_.isNonHuman)))
+      val res = Json.toJson(result.sortBy(_.teamName))
+      Ok(res)
+    }
+  }
+
+  def getAllTeamsOld(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
     teamsRepository.findAll()
       .map: res =>
         if includeNonHuman then
@@ -159,15 +185,60 @@ class UserManagementController @Inject()(
       implicit request =>
         umpConnector.resetUserGooglePassword(request.body).map(_ => Accepted)
 
-  def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async:
-    teamsRepository.findByTeamName(teamName)
-      .map:
-        _.fold(NotFound: Result): res =>
-          if includeNonHuman then
-            Ok(Json.toJson(res))
-          else
-            val filtered = res.copy(members = res.members.filterNot(_.isNonHuman))
-            Ok(Json.toJson(filtered))
+  private def getOrFetchChannelPrivacy(
+                                        channelUrl: Option[String]
+                                      )(using HeaderCarrier): Future[Option[TeamSlackChannel]] = {
+
+    channelUrl match {
+      case None => Future.successful(None)
+
+      case Some(url) =>
+
+        slackChannelCacheRepository.findByChannelName(url).flatMap {
+          case Some(slackChannelCache) =>
+            Future.successful(Some(TeamSlackChannel(url, slackChannelCache.isPrivate)))
+
+          case None =>
+            slackConnector.listAllChannels().flatMap { allChannels =>
+              val isPrivate = allChannels.exists(c => c.name == url && c.isPrivate)
+
+              slackChannelCacheRepository.upsert(url, isPrivate).failed.foreach { e =>
+                logger.warn(s"Failed to update cache for channel $url", e)
+              }
+
+              Future.successful(Some(TeamSlackChannel(url, isPrivate)))
+            }
+        }
+    }
+  }
+
+  def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async { implicit request =>
+    for {
+      maybeTeam  <- teamsRepository.findByTeamName(teamName)
+      slackChannel <- getOrFetchChannelPrivacy(maybeTeam.flatMap(_.slack))
+      slackNotificationChannel <- getOrFetchChannelPrivacy(maybeTeam.flatMap(_.slackNotification))
+    } yield {
+      maybeTeam.fold(NotFound: Result) { team =>
+        val teamSlackChannelResponse = TeamSlackChannelResponse(
+          members = team.members,
+          teamName = team.teamName,
+          description = team.description,
+          documentation = team.documentation,
+          slack = slackChannel,
+          slackNotification = slackNotificationChannel
+        )
+
+        if (includeNonHuman) {
+          Ok(Json.toJson(teamSlackChannelResponse))
+        } else {
+          val filtered = teamSlackChannelResponse.copy(
+            members = teamSlackChannelResponse.members.filterNot(_.isNonHuman)
+          )
+          Ok(Json.toJson(filtered))
+        }
+      }
+    }
+  }
 
   def manageVpnAccess(username: String, enableVpn: Boolean): Action[AnyContent] = Action.async:
     implicit request =>
@@ -178,7 +249,7 @@ class UserManagementController @Inject()(
     implicit request =>
       userAccessService.manageDevToolsAccess(username, enableDevTools)
         .map(_ => Accepted)
-      
+
   def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:
     implicit request =>
       umpConnector.requestNewVpnCert(username).map(json => Created(json))
