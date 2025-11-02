@@ -52,7 +52,7 @@ class SlackService @Inject()(
 
                                    case None if testMode =>
                                      logger.info(s"[TEST MODE] Would create Slack channel '$canonicalName' for team '${team.teamName}'")
-                                     Future.successful((SlackChannel(canonicalName, "FAKE-ID"), ChannelStatus.Created))
+                                     Future.successful((SlackChannel(canonicalName, "FAKE-ID", false), ChannelStatus.Created))
 
                                    case None =>
                                      slackConnector.createChannel(canonicalName).flatMap:
@@ -101,7 +101,7 @@ class SlackService @Inject()(
 
         result.recover { case e =>
           logger.error(s"Failed to sync Slack channel for team '${team.teamName}': ${e.getMessage}", e)
-          (SlackChannel(canonicalName, "FAILED"), ChannelStatus.Failed)
+          (SlackChannel(canonicalName, "FAILED", false), ChannelStatus.Failed)
         }.map(r => acc :+ r)
       }
     yield

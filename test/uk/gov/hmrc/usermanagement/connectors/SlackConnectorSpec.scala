@@ -157,7 +157,7 @@ class SlackConnectorSpec
           .willReturn(okJson(
             s"""
                |{
-               |  "channels": [ { "id": "C1", "name": "team-alpha" } ],
+               |  "channels": [ { "id": "C1", "name": "team-alpha", "is_private": false } ],
                |  "response_metadata": { "next_cursor": "cursor2" }
                |}
                |""".stripMargin))
@@ -168,15 +168,15 @@ class SlackConnectorSpec
           .willReturn(okJson(
             s"""
                |{
-               |  "channels": [ { "id": "C2", "name": "team-beta" } ],
+               |  "channels": [ { "id": "C2", "name": "team-beta", "is_private": false } ],
                |  "response_metadata": { "next_cursor": "" }
                |}
                |""".stripMargin))
       )
 
       connector.listAllChannels().futureValue shouldBe Seq(
-        SlackChannel("C1", "team-alpha"),
-        SlackChannel("C2", "team-beta")
+        SlackChannel("C1", "team-alpha", false),
+        SlackChannel("C2", "team-beta", false)
       )
 
   "createChannel" should:
@@ -186,11 +186,11 @@ class SlackConnectorSpec
           .withRequestBody(equalToJson("""{"name":"team-gamma"}"""))
           .willReturn(okJson(
             s"""
-               |{ "ok": true, "channel": { "id": "C123", "name": "team-gamma" } }
+               |{ "ok": true, "channel": { "id": "C123", "name": "team-gamma", "is_private": false } }
                |""".stripMargin))
       )
 
-      connector.createChannel("team-gamma").futureValue shouldBe Some(SlackChannel("C123", "team-gamma"))
+      connector.createChannel("team-gamma").futureValue shouldBe Some(SlackChannel("C123", "team-gamma", false))
 
     "return None when creation fails" in:
       stubFor(

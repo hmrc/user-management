@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.service
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{never, verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{never, verify, when}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,7 +28,6 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{EditTeamDetails, Member, SlackUser, Team}
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -61,7 +60,7 @@ class SlackServiceSpec
         .thenReturn(Future.successful(Seq.empty))
 
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops", false))))
 
       when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
@@ -106,7 +105,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops"))))
+        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops", false))))
 
       when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
