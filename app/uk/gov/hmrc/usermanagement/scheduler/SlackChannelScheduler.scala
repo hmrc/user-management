@@ -22,7 +22,7 @@ import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
-import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, TeamsAndRepositoriesConnector, UmpConnector}
+import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.usermanagement.model.SlackChannelType
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository
 import uk.gov.hmrc.usermanagement.service.SlackService

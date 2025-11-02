@@ -17,12 +17,14 @@
 package uk.gov.hmrc.usermanagement.model
 
 import play.api.libs.json.{Json, OFormat}
+import java.time.Instant
+import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats.Implicits.*
 
 case class SlackChannelCache(
-  channelName: String,
-  isPrivate: Boolean
+  channelUrl: String,
+  isPrivate: Boolean,
+  lastUpdated: Instant
 )
 
-object SlackChannelCache {
-  implicit val format: OFormat[SlackChannelCache] = Json.format[SlackChannelCache]
-}
+object SlackChannelCache:
+  given OFormat[SlackChannelCache] = Json.format[SlackChannelCache]

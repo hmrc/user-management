@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.model
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
-final case class ManageTeamMembersRequest(username: String, team: String)
+case class ManageTeamMembersRequest(username: String, team: String)
 
 object ManageTeamMembersRequest:
   val reads: Reads[ManageTeamMembersRequest] =

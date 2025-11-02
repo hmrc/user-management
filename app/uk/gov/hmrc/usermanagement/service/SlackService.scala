@@ -17,21 +17,19 @@
 package uk.gov.hmrc.usermanagement.service
 
 import cats.syntax.all.*
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern.after
 import org.apache.pekko.stream.Materializer
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{ChannelStatus, EditTeamDetails, SlackChannelType, Team}
 import uk.gov.hmrc.usermanagement.persistence.UsersRepository
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.pattern.after
-import java.util.concurrent.Semaphore
-import scala.concurrent.duration.*
-import scala.concurrent.Future
-import play.api.Configuration
 
+import java.util.concurrent.Semaphore
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.*
 
 @Singleton
 class SlackService @Inject()(

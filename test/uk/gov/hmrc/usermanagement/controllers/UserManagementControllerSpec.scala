@@ -35,6 +35,7 @@ import uk.gov.hmrc.usermanagement.model.{Member, Team}
 import uk.gov.hmrc.usermanagement.persistence.{SlackChannelCacheRepository, TeamsRepository, UsersRepository}
 import uk.gov.hmrc.usermanagement.service.UserAccessService
 
+import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -42,20 +43,19 @@ class UserManagementControllerSpec
   extends AnyWordSpec
     with Matchers
     with ScalaFutures
-    with MockitoSugar {
+    with MockitoSugar:
 
-  private given HeaderCarrier = HeaderCarrier()
   private given actorSystem   : ActorSystem  = ActorSystem("test")
   private given materializer  : Materializer = SystemMaterializer(actorSystem).materializer
 
   private def controller(
     teamsRepository: TeamsRepository,
-    slackConnector: SlackConnector,
-    slackCache: SlackChannelCacheRepository
-  ): UserManagementController = {
-    val cc: ControllerComponents = stubMessagesControllerComponents()
-    val dummyUmp: UmpConnector = mock[UmpConnector]
-    val dummyAccess: UserAccessService = mock[UserAccessService]
+    slackConnector:  SlackConnector,
+    slackCache:      SlackChannelCacheRepository
+  ): UserManagementController =
+    val cc: ControllerComponents        = stubMessagesControllerComponents()
+    val dummyUmp: UmpConnector          = mock[UmpConnector]
+    val dummyAccess: UserAccessService  = mock[UserAccessService]
     val dummyUsersRepo: UsersRepository = mock[UsersRepository]
     new UserManagementController(
       cc,
@@ -66,13 +66,12 @@ class UserManagementControllerSpec
       slackConnector,
       slackCache
     )
-  }
 
-  "getAllTeams" should {
-    "return teams with slack and slackNotification channel privacy using cache and preserve members when includeNonHuman=true" in {
+  "getAllTeams" should :
+    "return teams with slack and slackNotification channel privacy using cache and preserve members when includeNonHuman=true" in :
       val teamsRepo = mock[TeamsRepository]
-      val slack = mock[SlackConnector]
-      val cache = mock[SlackChannelCacheRepository]
+      val slack     = mock[SlackConnector]
+      val cache     = mock[SlackChannelCacheRepository]
 
       val teams = Seq(
         Team(
@@ -80,18 +79,18 @@ class UserManagementControllerSpec
             Member("u1", Some("U One"), "u1@email", "role", isNonHuman = false),
             Member("bot", None, "bot@email", "role", isNonHuman = true)
           ),
-          teamName = "TeamA",
-          description = Some("d"),
-          documentation = Some("doc"),
-          slack = Some("team-teama"),
+          teamName          = "TeamA",
+          description       = Some("d"),
+          documentation     = Some("doc"),
+          slack             = Some("team-teama"),
           slackNotification = Some("alerts-teama")
         )
       )
 
       when(teamsRepo.findAll()).thenReturn(Future.successful(teams))
       // Cache hit for both
-      when(cache.findByChannelName(eqTo("team-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teama", isPrivate = false))))
-      when(cache.findByChannelName(eqTo("alerts-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teama", isPrivate = true))))
+      when(cache.findByChannelUrl(eqTo("team-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teama", isPrivate = false, Instant.now()))))
+      when(cache.findByChannelUrl(eqTo("alerts-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teama", isPrivate = true, Instant.now()))))
 
       val ctrl = controller(teamsRepo, slack, cache)
 
@@ -112,29 +111,29 @@ class UserManagementControllerSpec
 
       // No need to call listAllChannels on cache hit
       verify(slack, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
-    }
 
-    "filter non-human members when includeNonHuman=false" in {
+
+    "filter non-human members when includeNonHuman=false" in :
       val teamsRepo = mock[TeamsRepository]
-      val slack = mock[SlackConnector]
-      val cache = mock[SlackChannelCacheRepository]
+      val slack     = mock[SlackConnector]
+      val cache     = mock[SlackChannelCacheRepository]
 
       val teams = Seq(
         Team(
           members = Seq(
             Member("human", Some("Human"), "h@email", "role", isNonHuman = false),
-            Member("bot"  , None            , "b@email", "role", isNonHuman = true)
+            Member("bot"  , None         , "b@email", "role", isNonHuman = true)
           ),
-          teamName = "TeamB",
-          description = None,
-          documentation = None,
-          slack = Some("team-teamb"),
+          teamName          = "TeamB",
+          description       = None,
+          documentation     = None,
+          slack             = Some("team-teamb"),
           slackNotification = None
         )
       )
 
       when(teamsRepo.findAll()).thenReturn(Future.successful(teams))
-      when(cache.findByChannelName(eqTo("team-teamb"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamb", isPrivate = false))))
+      when(cache.findByChannelUrl(eqTo("team-teamb"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamb", isPrivate = false, Instant.now()))))
 
       val ctrl = controller(teamsRepo, slack, cache)
 
@@ -142,29 +141,27 @@ class UserManagementControllerSpec
       status(result) shouldBe 200
       val arr = contentAsJson(result).as[JsArray].value
       (arr.head \ "members").as[JsArray].value.length shouldBe 1
-    }
-  }
 
-  "getTeamByTeamName" should {
-    "return a team with channel privacy from cache when present" in {
+  "getTeamByTeamName" should :
+    "return a team with channel privacy from cache when present" in :
       val teamsRepo = mock[TeamsRepository]
       val slack = mock[SlackConnector]
       val cache = mock[SlackChannelCacheRepository]
 
       val team = Team(
-        members = Seq(Member("u1", None, "u1@email", "role", isNonHuman = false)),
-        teamName = "TeamC",
-        description = None,
-        documentation = None,
-        slack = Some("team-teamc"),
+        members           = Seq(Member("u1", None, "u1@email", "role", isNonHuman = false)),
+        teamName          = "TeamC",
+        description       = None,
+        documentation     = None,
+        slack             = Some("team-teamc"),
         slackNotification = Some("alerts-teamc")
       )
 
       when(teamsRepo.findByTeamName(eqTo("TeamC"))).thenReturn(Future.successful(Some(team)))
-      when(cache.findByChannelName(eqTo("team-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamc", isPrivate = false))))
-      when(cache.findByChannelName(eqTo("alerts-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teamc", isPrivate = true))))
+      when(cache.findByChannelUrl(eqTo("team-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamc", isPrivate = false, Instant.now()))))
+      when(cache.findByChannelUrl(eqTo("alerts-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teamc", isPrivate = true, Instant.now()))))
 
-      val ctrl = controller(teamsRepo, slack, cache)
+      val ctrl   = controller(teamsRepo, slack, cache)
       val result = ctrl.getTeamByTeamName("TeamC", includeNonHuman = true)(FakeRequest())
       status(result) shouldBe 200
       val json = contentAsJson(result)
@@ -172,24 +169,24 @@ class UserManagementControllerSpec
       (json \ "slack").as[JsValue] shouldBe Json.obj("channel_url" -> "team-teamc", "is_private" -> false)
       (json \ "slackNotification").as[JsValue] shouldBe Json.obj("channel_url" -> "alerts-teamc", "is_private" -> true)
       verify(slack, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
-    }
 
-    "fetch from Slack and cache when not present in cache" in {
+
+    "fetch from Slack and cache when not present in cache" in :
       val teamsRepo = mock[TeamsRepository]
       val slack = mock[SlackConnector]
       val cache = mock[SlackChannelCacheRepository]
 
       val team = Team(
-        members = Nil,
-        teamName = "TeamD",
-        description = None,
-        documentation = None,
-        slack = Some("team-teamd"),
+        members           = Nil,
+        teamName          = "TeamD",
+        description       = None,
+        documentation     = None,
+        slack             = Some("team-teamd"),
         slackNotification = Some("alerts-teamd")
       )
 
       when(teamsRepo.findByTeamName(eqTo("TeamD"))).thenReturn(Future.successful(Some(team)))
-      when(cache.findByChannelName(any[String])).thenReturn(Future.successful(None))
+      when(cache.findByChannelUrl(any[String])).thenReturn(Future.successful(None))
       when(slack.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq(
           SlackChannel("CID1", "team-teamd", isPrivate = false),
@@ -206,6 +203,6 @@ class UserManagementControllerSpec
       (json \ "slackNotification").as[JsValue] shouldBe Json.obj("channel_url" -> "alerts-teamd", "is_private" -> true)
       verify(cache).upsert(eqTo("team-teamd"), eqTo(false))
       verify(cache).upsert(eqTo("alerts-teamd"), eqTo(true))
-    }
-  }
-}
+
+
+

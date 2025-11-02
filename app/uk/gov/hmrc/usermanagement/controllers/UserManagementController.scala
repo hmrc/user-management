@@ -35,13 +35,13 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class UserManagementController @Inject()(
-    cc                    : ControllerComponents,
-    umpConnector          : UmpConnector,
-    userAccessService     : UserAccessService,
-    usersRepository       : UsersRepository,
-    teamsRepository       : TeamsRepository,
-    slackConnector        : SlackConnector,
-    slackChannelCacheRepository: SlackChannelCacheRepository
+    cc                          : ControllerComponents,
+    umpConnector                : UmpConnector,
+    userAccessService           : UserAccessService,
+    usersRepository             : UsersRepository,
+    teamsRepository             : TeamsRepository,
+    slackConnector              : SlackConnector,
+    slackChannelCacheRepository : SlackChannelCacheRepository
   )(using
     ExecutionContext, Materializer
 ) extends BackendController(cc) with Logging:
@@ -53,38 +53,28 @@ class UserManagementController @Inject()(
       .map: res =>
         Ok(Json.toJson(res.sortBy(_.username)))
 
-  def getAllTeams(includeNonHuman: Boolean): Action[AnyContent] = Action.async { implicit request =>
-    for {
-      teams <- teamsRepository.findAll()
-      teamsWithSlack <- Future.sequence(teams.map { team =>
-        for {
-          slackChannel <- getOrFetchChannelPrivacy(team.slack)
-          slackNotificationChannel <- getOrFetchChannelPrivacy(team.slackNotification)
-        } yield TeamSlackChannelResponse(
-          members = team.members,
-          teamName = team.teamName,
-          description = team.description,
-          documentation = team.documentation,
-          slack = slackChannel,
-          slackNotification = slackNotificationChannel
+  def getAllTeams(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
+    implicit request =>
+      for
+        teams           <- teamsRepository.findAll()
+        teamsWithSlack  <- Future.sequence(teams.map: team =>
+          for
+            slackChannel              <- getOrFetchChannelPrivacy(team.slack)
+            slackNotificationChannel  <- getOrFetchChannelPrivacy(team.slackNotification)
+          yield TeamSlackChannelResponse(
+            members           = team.members,
+            teamName          = team.teamName,
+            description       = team.description,
+            documentation     = team.documentation,
+            slack             = slackChannel,
+            slackNotification = slackNotificationChannel
+          )
         )
-      })
-    } yield {
-      val result = if includeNonHuman then teamsWithSlack else teamsWithSlack.map(t => t.copy(members = t.members.filterNot(_.isNonHuman)))
-      val res = Json.toJson(result.sortBy(_.teamName))
-      Ok(res)
-    }
-  }
-
-  def getAllTeamsOld(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
-    teamsRepository.findAll()
-      .map: res =>
-        if includeNonHuman then
-          Ok(Json.toJson(res.sortBy(_.teamName)))
-        else
-          val filtered = res.map(team => team.copy(members = team.members.filterNot(_.isNonHuman)))
-          Ok(Json.toJson(filtered))
-
+      yield
+        val result = if includeNonHuman then teamsWithSlack else teamsWithSlack.map(t => t.copy(members = t.members.filterNot(_.isNonHuman)))
+        val res = Json.toJson(result.sortBy(_.teamName))
+        Ok(res)
+  
   def getUserByUsername(username: String): Action[AnyContent] = Action.async:
     usersRepository.findByUsername(username)
       .map:
@@ -185,60 +175,52 @@ class UserManagementController @Inject()(
       implicit request =>
         umpConnector.resetUserGooglePassword(request.body).map(_ => Accepted)
 
-  private def getOrFetchChannelPrivacy(
-                                        channelUrl: Option[String]
-                                      )(using HeaderCarrier): Future[Option[TeamSlackChannel]] = {
+  private def getOrFetchChannelPrivacy(channelUrl: Option[String])(using HeaderCarrier): Future[Option[TeamSlackChannel]] =
+    channelUrl match
+      case None =>
+        Future.successful(None)
+      case Some(slackChannelUrl) =>
+        slackChannelCacheRepository.findByChannelUrl(slackChannelUrl).flatMap:
+          case Some(cachedSlackChannel) => // Cache hit - return cached value
+            Future.successful(Some(TeamSlackChannel(slackChannelUrl, cachedSlackChannel.isPrivate)))
+          case None => // Cache miss - fetch from Slack
+            slackConnector.listAllChannels().flatMap: allChannels =>
+              val isPrivate = allChannels.exists(c => c.name == extractSlackChannelName(slackChannelUrl) && c.isPrivate)
+              slackChannelCacheRepository.upsert(slackChannelUrl, isPrivate).failed.foreach: e =>
+                logger.warn(s"Failed to update cache for channel $slackChannelUrl", e)
+              Future.successful(Some(TeamSlackChannel(slackChannelUrl, isPrivate)))
 
-    channelUrl match {
-      case None => Future.successful(None)
+  private def extractSlackChannelName(url: String): String =
+    val path =
+      try java.net.URI(url).getPath
+      catch case _: Throwable => url
+    val lastSegment = path.split('/').filterNot(_.isEmpty).lastOption.getOrElse(path)
+    lastSegment.takeWhile(ch => ch != '?' && ch != '#')
 
-      case Some(url) =>
-
-        slackChannelCacheRepository.findByChannelName(url).flatMap {
-          case Some(slackChannelCache) =>
-            Future.successful(Some(TeamSlackChannel(url, slackChannelCache.isPrivate)))
-
-          case None =>
-            slackConnector.listAllChannels().flatMap { allChannels =>
-              val isPrivate = allChannels.exists(c => c.name == url && c.isPrivate)
-
-              slackChannelCacheRepository.upsert(url, isPrivate).failed.foreach { e =>
-                logger.warn(s"Failed to update cache for channel $url", e)
-              }
-
-              Future.successful(Some(TeamSlackChannel(url, isPrivate)))
-            }
-        }
-    }
-  }
-
-  def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async { implicit request =>
-    for {
-      maybeTeam  <- teamsRepository.findByTeamName(teamName)
-      slackChannel <- getOrFetchChannelPrivacy(maybeTeam.flatMap(_.slack))
-      slackNotificationChannel <- getOrFetchChannelPrivacy(maybeTeam.flatMap(_.slackNotification))
-    } yield {
-      maybeTeam.fold(NotFound: Result) { team =>
-        val teamSlackChannelResponse = TeamSlackChannelResponse(
-          members = team.members,
-          teamName = team.teamName,
-          description = team.description,
-          documentation = team.documentation,
-          slack = slackChannel,
-          slackNotification = slackNotificationChannel
-        )
-
-        if (includeNonHuman) {
-          Ok(Json.toJson(teamSlackChannelResponse))
-        } else {
-          val filtered = teamSlackChannelResponse.copy(
-            members = teamSlackChannelResponse.members.filterNot(_.isNonHuman)
+  def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async:
+    implicit request =>
+      for
+        maybeTeam                <- teamsRepository.findByTeamName(teamName)
+        slackChannel             <- getOrFetchChannelPrivacy(maybeTeam.flatMap(_.slack))
+        slackNotificationChannel <- getOrFetchChannelPrivacy(maybeTeam.flatMap(_.slackNotification))
+      yield
+        maybeTeam.fold(NotFound: Result): team =>
+          val teamSlackChannelResponse = TeamSlackChannelResponse(
+            members           = team.members,
+            teamName          = team.teamName,
+            description       = team.description,
+            documentation     = team.documentation,
+            slack             = slackChannel,
+            slackNotification = slackNotificationChannel
           )
-          Ok(Json.toJson(filtered))
-        }
-      }
-    }
-  }
+
+          if includeNonHuman then
+            Ok(Json.toJson(teamSlackChannelResponse))
+          else
+            val filtered = teamSlackChannelResponse.copy(
+              members = teamSlackChannelResponse.members.filterNot(_.isNonHuman)
+            )
+            Ok(Json.toJson(filtered))
 
   def manageVpnAccess(username: String, enableVpn: Boolean): Action[AnyContent] = Action.async:
     implicit request =>

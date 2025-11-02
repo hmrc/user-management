@@ -20,7 +20,7 @@ import com.typesafe.config.ConfigFactory
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
-import org.mockito.Mockito.{never, verify, verifyNoInteractions, when}
+import org.mockito.Mockito.{never, verify, when}
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -32,7 +32,6 @@ import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpC
 import uk.gov.hmrc.usermanagement.model.*
 import uk.gov.hmrc.usermanagement.persistence.UsersRepository
 
-import uk.gov.hmrc.usermanagement.model.{EditTeamDetails, Member, SlackUser, Team}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -102,7 +101,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts", false))))
 
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser)))
 
@@ -153,7 +152,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops")), SlackChannelType.Main).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops", false)), SlackChannelType.Main).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
@@ -192,7 +191,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops-alerts")), SlackChannelType.Notification).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops-alerts", false)), SlackChannelType.Notification).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])

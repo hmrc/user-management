@@ -16,8 +16,9 @@
 
 package uk.gov.hmrc.usermanagement.persistence
 
+import org.bson.BsonType
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model._
+import org.mongodb.scala.model.*
 import play.api.Logging
 import uk.gov.hmrc.mongo.MongoComponent
 import uk.gov.hmrc.mongo.play.json.PlayMongoRepository
@@ -34,13 +35,14 @@ class SlackChannelCacheRepository @Inject()(
                                            )(implicit ec: ExecutionContext) extends PlayMongoRepository[SlackChannelCache](
   mongoComponent = mongoComponent,
   collectionName = "slackChannelCache",
-  domainFormat   = SlackChannelCache.format,
+  domainFormat   = SlackChannelCache.given_OFormat_SlackChannelCache,
   indexes        = Seq(
     IndexModel(
-      Indexes.ascending("channelName"),
+      Indexes.ascending("channelUrl"),
       IndexOptions()
-        .name("channelNameIdx")
+        .name("channelUrlIdx")
         .unique(true)
+        .partialFilterExpression(Filters.`type`("channelUrl", BsonType.STRING))
     ),
     IndexModel(
       Indexes.ascending("lastUpdated"),
@@ -50,18 +52,19 @@ class SlackChannelCacheRepository @Inject()(
     )
   ),
   replaceIndexes = true
-) with Logging {
+) with Logging :
 
-  def findByChannelName(channelName: String): Future[Option[SlackChannelCache]] =
+  def findByChannelUrl(channelUrl: String): Future[Option[SlackChannelCache]] =
     collection
-      .find(BsonDocument("channelName" -> channelName))
+      .find(BsonDocument("channelUrl" -> channelUrl))
       .headOption()
 
-  def upsert(channelName: String, isPrivate: Boolean): Future[Unit] = {
-    val selector = BsonDocument("channelName" -> channelName)
+  def upsert(channelUrl: String, isPrivate: Boolean): Future[Unit] =
+    val selector = BsonDocument("channelUrl" -> channelUrl)
     val update = Updates.combine(
       Updates.set("isPrivate", isPrivate),
-      Updates.set("lastUpdated", Instant.now())
+      Updates.set("lastUpdated", Instant.now()),
+      Updates.setOnInsert("channelUrl", channelUrl)
     )
     
     collection
@@ -72,5 +75,4 @@ class SlackChannelCacheRepository @Inject()(
       )
       .toFuture()
       .map(_ => ())
-  }
-}
+
