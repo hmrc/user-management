@@ -65,7 +65,7 @@ class SlackService @Inject()(
             res           <-
               if foundIds.isEmpty then
                 logger.warn(s"No Slack users found for team '${team.teamName}'. Channel will NOT be created or updated.")
-                Future.successful((SlackChannel("NONE", canonicalName), ChannelStatus.Skipped))
+                Future.successful((SlackChannel("NONE", canonicalName, false), ChannelStatus.Skipped))
               else
                 for
                   (channel, status) <- channelOpt match
