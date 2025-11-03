@@ -36,8 +36,8 @@ class SlackService @Inject()(
 
   def ensureChannelExistsAndSyncMembers(teams: Seq[Team], testMode: Boolean = false)(using Materializer, HeaderCarrier): Future[Unit] =
 
-    Future.traverse(teams) { team =>
-      val canonicalName = normaliseTeamName(team.teamName)
+    teams.foldLeftM(List.empty[(SlackChannel, ChannelStatus)]) { (acc, team) =>
+      val canonicalName  = normaliseTeamName(team.teamName)
       val nameVariations = generateTeamNameVariants(team.teamName)
 
       val result =
@@ -62,7 +62,7 @@ class SlackService @Inject()(
                                            logger.warn(s"Failed to create Slack channel '$canonicalName', attempting to refetch...")
                                            slackConnector.listAllChannels().map(_.find(_.name.equalsIgnoreCase(canonicalName))).flatMap:
                                              case Some(found) => Future.successful((found, ChannelStatus.Found))
-                                             case None => Future.failed(new RuntimeException(s"Unable to create or find Slack channel '$canonicalName'"))
+                                             case None        => Future.failed(new RuntimeException(s"Unable to create or find Slack channel '$canonicalName'"))
           emails                =  team.members.map(_.primaryEmail.trim).filter(_.nonEmpty).distinct
           emailToUserId         <- emails.foldLeftM(List.empty[(String, Option[String])]) { (acc, email) =>
                                      slackConnector.lookupUserByEmail(email).map(userOpt => acc :+ (email, userOpt.map(_.id)))
@@ -71,7 +71,8 @@ class SlackService @Inject()(
           missingEmails         =  emailToUserId.collect { case (email, None) => email }
           _                     =  if missingEmails.nonEmpty then
                                      logger.warn(s"Could not find Slack users by email for team '${team.teamName}': ${missingEmails.mkString(", ")}")
-          existingMemberIds     <- if channel.id == "FAKE-ID" then Future.successful(Seq.empty[String]) else slackConnector.listChannelMembers(channel.id)
+          existingMemberIds     <- if channel.id == "FAKE-ID" then Future.successful(Seq.empty[String])
+                                   else slackConnector.listChannelMembers(channel.id)
           newMemberIds          =  foundIds.diff(existingMemberIds)
           _                     =  if newMemberIds.isEmpty
                                    then logger.info(s"All Slack users for team '${team.teamName}' are already in channel '${channel.name}'")
@@ -86,10 +87,10 @@ class SlackService @Inject()(
           _                     <- if !testMode then
                                      umpConnector.editTeamDetails(
                                        EditTeamDetails(
-                                         team = team.teamName,
-                                         description = team.description,
-                                         documentation = team.documentation,
-                                         slack = Some(channel.name),
+                                         team              = team.teamName,
+                                         description       = team.description,
+                                         documentation     = team.documentation,
+                                         slack             = Some(channel.name),
                                          slackNotification = team.slackNotification
                                        )
                                      )
@@ -100,7 +101,7 @@ class SlackService @Inject()(
       result.recover { case e =>
         logger.error(s"Failed to sync Slack channel for team '${team.teamName}': ${e.getMessage}", e)
         (SlackChannel(canonicalName, "FAILED"), ChannelStatus.Failed)
-      }
+      }.map(r => acc :+ r)
     }.map: results =>
       val summary      = results.groupBy(_._2).view.mapValues(_.size).toMap
       val createdCount = summary.getOrElse(ChannelStatus.Created, 0)
@@ -109,7 +110,6 @@ class SlackService @Inject()(
 
       val mode = if testMode then "[TEST MODE]" else ""
       logger.info(s"$mode Slack channel sync complete: $createdCount created, $foundCount found, $failedCount failed.")
-
 
   private def normaliseTeamName(teamName: String): String =
     "team-" + teamName
