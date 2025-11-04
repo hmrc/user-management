@@ -62,6 +62,7 @@ class SlackChannelScheduler @Inject()(
       teamsToProcess =  allTeams
                           .filter(t => githubTeams.exists(gt => gt.name.asString.equalsIgnoreCase(t.teamName)))
                           .filter(_.slack.isEmpty)
+      _              <- Future.successful(logger.info(s"Slack channel sync has found ${teamsToProcess.size} teams without slack channels to process"))
       _              <- slackService.ensureChannelExistsAndSyncMembers(teamsToProcess, testMode)
     yield ()
 

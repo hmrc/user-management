@@ -69,7 +69,7 @@ class SlackServiceSpec
       when(slackConnector.lookupUserByEmail(eqTo("jane.doe@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("jane.doe@gmail.com"), "U2", "jane.doe", false, false))))
 
-      when(slackConnector.listChannelMembers(eqTo("C123"))(using any[HeaderCarrier]))
+      when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq.empty))
 
       when(slackConnector.inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier]))
@@ -117,7 +117,7 @@ class SlackServiceSpec
       when(slackConnector.lookupUserByEmail(eqTo("existing.user@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("existing.user@gmail.com"), "U3", "existing.user", false, false))))
 
-      when(slackConnector.listChannelMembers(eqTo("C123"))(using any[HeaderCarrier]))
+      when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq("U3")))
 
       when(slackConnector.inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier]))
