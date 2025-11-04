@@ -122,18 +122,27 @@ class SlackConnector @Inject()(
         .map(_ => ())
 
 
-  def listChannelMembers(channelId: String)(using HeaderCarrier): Future[Seq[String]] =
-    given Reads[SlackChannelMembersResponse] = SlackChannelMembersResponse.reads
-    httpClientV2
-      .get(url"$apiUrl/conversations.members?channel=$channelId")
-      .setHeader("Authorization" -> s"Bearer $token")
-      .withProxy
-      .execute[SlackChannelMembersResponse]
-      .map(_.members)
+  def listChannelMembers(channelId: String)(using Materializer, HeaderCarrier): Future[Seq[String]] =
+    Source.unfoldAsync(Option(""): Option[String]):
+      case None => Future.successful(None)
+      case Some(cursor) =>
+        given Reads[SlackChannelMembersResponse] = SlackChannelMembersResponse.reads
+
+        httpClientV2
+          .get(url"$apiUrl/conversations.members?channel=$channelId&limit=200&cursor=$cursor")
+          .setHeader("Authorization" -> s"Bearer $token")
+          .withProxy
+          .execute[SlackChannelMembersResponse]
+          .map { response =>
+            val next = response.nextCursor
+            Some((next, response.members))
+          }
+    .throttle(1, requestThrottle)
+    .runFold(Seq.empty[String])(_ ++ _)
 
 end SlackConnector
 
-private final case class SlackUserListPage(
+private case class SlackUserListPage(
   members   : Seq[SlackUser],
   nextCursor: String
 )
@@ -144,7 +153,7 @@ private object SlackUserListPage:
     ~ (__ \ "response_metadata" \ "next_cursor").read[String]
     )(SlackUserListPage.apply)
 
-final case class SlackChannel(id: String, name: String)
+case class SlackChannel(id: String, name: String)
 
 object SlackChannel:
   val reads: Reads[SlackChannel] =
@@ -152,7 +161,7 @@ object SlackChannel:
     ~ (__ \ "name").read[String]
     )(SlackChannel.apply)
 
-private final case class SlackChannelListPage(channels: Seq[SlackChannel], nextCursor: String)
+private case class SlackChannelListPage(channels: Seq[SlackChannel], nextCursor: String)
 
 private object SlackChannelListPage:
   given Reads[SlackChannel] = SlackChannel.reads
@@ -175,11 +184,20 @@ object SlackChannelResponse:
     ~ (__ \ "error"  ).readNullable[String]
     )(SlackChannelResponse.apply)
 
-private final case class SlackChannelMembersResponse(members: Seq[String])
+case class SlackChannelMembersResponse(
+  ok        : Boolean,
+  members   : Seq[String],
+  nextCursor: Option[String],
+  error     : Option[String]
+)
 
-private object SlackChannelMembersResponse:
+object SlackChannelMembersResponse:
   val reads: Reads[SlackChannelMembersResponse] =
-    (__ \ "members").read[Seq[String]].map(SlackChannelMembersResponse.apply)
+    ( (__ \ "ok"                               ).read[Boolean]
+    ~ (__ \ "members"                          ).readNullable[Seq[String]].map(_.getOrElse(Seq.empty))
+    ~ (__ \ "response_metadata" \ "next_cursor").readNullable[String]
+    ~ (__ \ "error"                            ).readNullable[String]
+    )(SlackChannelMembersResponse.apply)
 
 case class SlackUserResponse(
   ok  : Boolean,

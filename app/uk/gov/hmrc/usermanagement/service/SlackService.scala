@@ -36,73 +36,75 @@ class SlackService @Inject()(
 
   def ensureChannelExistsAndSyncMembers(teams: Seq[Team], testMode: Boolean = false)(using Materializer, HeaderCarrier): Future[Unit] =
 
-    teams.foldLeftM(List.empty[(SlackChannel, ChannelStatus)]) { (acc, team) =>
-      val canonicalName  = normaliseTeamName(team.teamName)
-      val nameVariations = generateTeamNameVariants(team.teamName)
+    for
+      existingChannels <- slackConnector.listAllChannels()
+      results          <- teams.foldLeftM(List.empty[(SlackChannel, ChannelStatus)]) { (acc, team) =>
+        val canonicalName  = normaliseTeamName(team.teamName)
+        val nameVariations = generateTeamNameVariants(team.teamName)
+        val channelOpt     = existingChannels.find(c => nameVariations.exists(variant => c.name.equalsIgnoreCase(variant)))
 
-      val result =
-        for
-          existingChannels      <- slackConnector.listAllChannels()
-          channelOpt            =  existingChannels.find(c => nameVariations.exists(variant => c.name.equalsIgnoreCase(variant)))
-          (channel, status)     <- channelOpt match
-                                     case Some(found) =>
-                                       logger.info(s"Found existing Slack channel '${found.name}' for team '${team.teamName}'")
-                                       Future.successful((found, ChannelStatus.Found))
+        val result =
+          for
+            (channel, status) <- channelOpt match
+                                   case Some(found) =>
+                                     logger.info(s"Found existing Slack channel '${found.name}' for team '${team.teamName}'")
+                                     Future.successful((found, ChannelStatus.Found))
 
-                                     case None if testMode =>
-                                       logger.info(s"[TEST MODE] Would create Slack channel '$canonicalName' for team '${team.teamName}'")
-                                       Future.successful((SlackChannel(canonicalName, "FAKE-ID"), ChannelStatus.Created))
+                                   case None if testMode =>
+                                     logger.info(s"[TEST MODE] Would create Slack channel '$canonicalName' for team '${team.teamName}'")
+                                     Future.successful((SlackChannel(canonicalName, "FAKE-ID"), ChannelStatus.Created))
 
-                                     case None =>
-                                       slackConnector.createChannel(canonicalName).flatMap:
-                                         case Some(created) =>
-                                           logger.info(s"Created Slack channel '${created.name}' for team '${team.teamName}'")
-                                           Future.successful((created, ChannelStatus.Created))
-                                         case None =>
-                                           logger.warn(s"Failed to create Slack channel '$canonicalName', attempting to refetch...")
-                                           slackConnector.listAllChannels().map(_.find(_.name.equalsIgnoreCase(canonicalName))).flatMap:
-                                             case Some(found) => Future.successful((found, ChannelStatus.Found))
-                                             case None        => Future.failed(new RuntimeException(s"Unable to create or find Slack channel '$canonicalName'"))
-          emails                =  team.members.map(_.primaryEmail.trim).filter(_.nonEmpty).distinct
-          emailToUserId         <- emails.foldLeftM(List.empty[(String, Option[String])]) { (acc, email) =>
-                                     slackConnector.lookupUserByEmail(email).map(userOpt => acc :+ (email, userOpt.map(_.id)))
-                                   }
-          foundIds              =  emailToUserId.collect { case (_, Some(id)) => id }.distinct
-          missingEmails         =  emailToUserId.collect { case (email, None) => email }
-          _                     =  if missingEmails.nonEmpty then
-                                     logger.warn(s"Could not find Slack users by email for team '${team.teamName}': ${missingEmails.mkString(", ")}")
-          existingMemberIds     <- if channel.id == "FAKE-ID" then Future.successful(Seq.empty[String])
-                                   else slackConnector.listChannelMembers(channel.id)
-          newMemberIds          =  foundIds.diff(existingMemberIds)
-          _                     =  if newMemberIds.isEmpty
-                                   then logger.info(s"All Slack users for team '${team.teamName}' are already in channel '${channel.name}'")
-                                   else if testMode then
-                                     logger.info(s"[TEST MODE] Would invite ${newMemberIds.size} new Slack users to channel '${channel.name}' for team '${team.teamName}'")
-                                   else
-                                     logger.info(s"Inviting ${newMemberIds.size} new Slack users to channel '${channel.name}' for team '${team.teamName}'")
-          _                     <- if !testMode && newMemberIds.nonEmpty then
-                                     slackConnector.inviteUsersToChannel(channel.id, newMemberIds)
-                                   else
-                                     Future.unit
-          _                     <- if !testMode then
-                                     umpConnector.editTeamDetails(
-                                       EditTeamDetails(
-                                         team              = team.teamName,
-                                         description       = team.description,
-                                         documentation     = team.documentation,
-                                         slack             = Some(channel.name),
-                                         slackNotification = team.slackNotification
-                                       )
+                                   case None =>
+                                     slackConnector.createChannel(canonicalName).flatMap:
+                                       case Some(created) =>
+                                         logger.info(s"Created Slack channel '${created.name}' for team '${team.teamName}'")
+                                         Future.successful((created, ChannelStatus.Created))
+                                       case None =>
+                                         logger.warn(s"Failed to create Slack channel '$canonicalName', attempting to refetch...")
+                                         slackConnector.listAllChannels().map(_.find(_.name.equalsIgnoreCase(canonicalName))).flatMap:
+                                           case Some(found) => Future.successful((found, ChannelStatus.Found))
+                                           case None => Future.failed(new RuntimeException(s"Unable to create or find Slack channel '$canonicalName'"))
+            emails            =  team.members.map(_.primaryEmail.trim).filter(_.nonEmpty).distinct
+            emailToUserId     <- emails.foldLeftM(List.empty[(String, Option[String])]) { (acc, email) =>
+                                   slackConnector.lookupUserByEmail(email).map(userOpt => acc :+ (email, userOpt.map(_.id)))
+                                 }
+            foundIds          =  emailToUserId.collect { case (_, Some(id)) => id }.distinct
+            missingEmails     =  emailToUserId.collect { case (email, None) => email }
+            _                 =  if missingEmails.nonEmpty then
+                                   logger.warn(s"Could not find Slack users by email for team '${team.teamName}': ${missingEmails.mkString(", ")}")
+            existingMemberIds <- if channel.id == "FAKE-ID" then Future.successful(Seq.empty[String])
+                                 else slackConnector.listChannelMembers(channel.id)
+            newMemberIds      =  foundIds.diff(existingMemberIds)
+            _                 =  if newMemberIds.isEmpty
+                                 then logger.info(s"All Slack users for team '${team.teamName}' are already in channel '${channel.name}'")
+                                 else if testMode then
+                                   logger.info(s"[TEST MODE] Would invite ${newMemberIds.size} new Slack users to channel '${channel.name}' for team '${team.teamName}'")
+                                 else
+                                   logger.info(s"Inviting ${newMemberIds.size} new Slack users to channel '${channel.name}' for team '${team.teamName}'")
+            _                 <- if !testMode && newMemberIds.nonEmpty then
+                                   slackConnector.inviteUsersToChannel(channel.id, newMemberIds)
+                                 else
+                                   Future.unit
+            _                 <- if !testMode then
+                                   umpConnector.editTeamDetails(
+                                     EditTeamDetails(
+                                       team              = team.teamName,
+                                       description       = team.description,
+                                       documentation     = team.documentation,
+                                       slack             = Some(channel.name),
+                                       slackNotification = team.slackNotification
                                      )
-                                   else
-                                     Future.unit
-        yield (channel, status)
+                                   )
+                                 else
+                                   Future.unit
+          yield (channel, status)
 
-      result.recover { case e =>
-        logger.error(s"Failed to sync Slack channel for team '${team.teamName}': ${e.getMessage}", e)
-        (SlackChannel(canonicalName, "FAILED"), ChannelStatus.Failed)
-      }.map(r => acc :+ r)
-    }.map: results =>
+        result.recover { case e =>
+          logger.error(s"Failed to sync Slack channel for team '${team.teamName}': ${e.getMessage}", e)
+          (SlackChannel(canonicalName, "FAILED"), ChannelStatus.Failed)
+        }.map(r => acc :+ r)
+      }
+    yield
       val summary      = results.groupBy(_._2).view.mapValues(_.size).toMap
       val createdCount = summary.getOrElse(ChannelStatus.Created, 0)
       val foundCount   = summary.getOrElse(ChannelStatus.Found, 0)

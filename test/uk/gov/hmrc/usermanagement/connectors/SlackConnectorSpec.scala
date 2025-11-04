@@ -221,9 +221,9 @@ class SlackConnectorSpec
   "listChannelMembers" should:
     "return member IDs from Slack" in:
       stubFor(
-        get(urlEqualTo("/conversations.members?channel=CXYZ"))
+        get(urlEqualTo("/conversations.members?channel=CXYZ&limit=200&cursor="))
           .willReturn(okJson(
-            """{ "members": ["U1","U2","U3"] }"""
+            """{ "ok": true, "members": ["U1","U2","U3"] }"""
           ))
       )
 
