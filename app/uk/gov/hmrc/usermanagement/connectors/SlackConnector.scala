@@ -72,7 +72,6 @@ class SlackConnector @Inject()(
 
   def lookupUserByEmail(email: String)(using HeaderCarrier): Future[Option[SlackUser]] =
     given Reads[SlackUserResponse] = SlackUserResponse.reads
-
     httpClientV2
       .get(url"$apiUrl/users.lookupByEmail?email=$email")
       .setHeader("Authorization" -> s"Bearer $token")
@@ -121,22 +120,22 @@ class SlackConnector @Inject()(
         .execute[JsValue]
         .map(_ => ())
 
+  private def getChannelMembersPage(channelId: String, cursor: String)(using HeaderCarrier): Future[SlackChannelMembersResponse] =
+    given Reads[SlackChannelMembersResponse] = SlackChannelMembersResponse.reads
+    httpClientV2
+      .get(url"$apiUrl/conversations.members?channel=$channelId&limit=200&cursor=$cursor")
+      .setHeader("Authorization" -> s"Bearer $token")
+      .withProxy
+      .execute[SlackChannelMembersResponse]
 
   def listChannelMembers(channelId: String)(using Materializer, HeaderCarrier): Future[Seq[String]] =
     Source.unfoldAsync(Option(""): Option[String]):
       case None => Future.successful(None)
       case Some(cursor) =>
-        given Reads[SlackChannelMembersResponse] = SlackChannelMembersResponse.reads
-
-        httpClientV2
-          .get(url"$apiUrl/conversations.members?channel=$channelId&limit=200&cursor=$cursor")
-          .setHeader("Authorization" -> s"Bearer $token")
-          .withProxy
-          .execute[SlackChannelMembersResponse]
-          .map { response =>
-            val next = response.nextCursor
-            Some((next, response.members))
-          }
+        getChannelMembersPage(channelId, cursor).map: result =>
+          if result.nextCursor.isEmpty
+          then Some((None, result.members))
+          else Some((result.nextCursor, result.members))
     .throttle(1, requestThrottle)
     .runFold(Seq.empty[String])(_ ++ _)
 
