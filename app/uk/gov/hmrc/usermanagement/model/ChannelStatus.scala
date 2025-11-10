@@ -20,3 +20,8 @@ enum ChannelStatus:
   case Created
   case Found
   case Failed
+  case Skipped
+
+enum SlackChannelType:
+  case Main
+  case Notification

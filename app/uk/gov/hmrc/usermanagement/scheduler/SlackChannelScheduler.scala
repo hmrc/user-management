@@ -23,6 +23,7 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
 import uk.gov.hmrc.usermanagement.connectors.{TeamsAndRepositoriesConnector, UmpConnector}
+import uk.gov.hmrc.usermanagement.model.SlackChannelType
 import uk.gov.hmrc.usermanagement.service.SlackService
 
 import javax.inject.{Inject, Singleton}
@@ -56,14 +57,16 @@ class SlackChannelScheduler @Inject()(
   scheduleWithLock("User Management Slack Channel", schedulerConfig, slackChannelLock):
     given HeaderCarrier = HeaderCarrier()
     for
-      _              <- Future.successful(logger.info("Beginning user management slack channel sync"))
-      allTeams       <- umpConnector.getAllTeams()
-      githubTeams    <- teamsAndRepositoriesConnector.allTeams()
-      teamsToProcess =  allTeams
-                          .filter(t => githubTeams.exists(gt => gt.name.asString.equalsIgnoreCase(t.teamName)))
-                          .filter(_.slack.isEmpty)
-      _              <- Future.successful(logger.info(s"Slack channel sync has found ${teamsToProcess.size} teams without slack channels to process"))
-      _              <- slackService.ensureChannelExistsAndSyncMembers(teamsToProcess, testMode)
+      _                 <- Future.successful(logger.info("Beginning user management slack channel sync"))
+      allTeams          <- umpConnector.getAllTeams()
+      githubTeams       <- teamsAndRepositoriesConnector.allTeams()
+      baseTeams         =  allTeams.filter(t => githubTeams.exists(gt => gt.name.asString.equalsIgnoreCase(t.teamName)))
+      missingSlack      =  baseTeams.filter(_.slack.isEmpty)                    
+      _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlack.size} teams without slack channels to process"))
+      _                 <- slackService.ensureChannelExistsAndSyncMembers(missingSlack, SlackChannelType.Main, testMode)
+      missingSlackAlert =  baseTeams.filter(_.slackNotification.isEmpty)
+      _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlackAlert.size} teams without slack notification channels to process"))
+      _                 <- slackService.ensureChannelExistsAndSyncMembers(missingSlackAlert, SlackChannelType.Notification, testMode)
     yield ()
 
 end SlackChannelScheduler
