@@ -77,7 +77,7 @@ class SlackService @Inject()(
             res           <-
               if foundIds.isEmpty then
                 logger.warn(s"No Slack users found for team '${team.teamName}'. Channel will NOT be created or updated.")
-                Future.successful((SlackChannel("NONE", canonicalName), ChannelStatus.Skipped))
+                Future.successful((SlackChannel("NONE", canonicalName, false), ChannelStatus.Skipped))
               else
                 for
                   (channel, status) <- channelOpt match
@@ -87,7 +87,7 @@ class SlackService @Inject()(
 
                                        case None if testMode =>
                                          logger.info(s"[TEST MODE] Would create Slack channel '$canonicalName' for team '${team.teamName}'")
-                                         Future.successful((SlackChannel("FAKE-ID", canonicalName), ChannelStatus.Created))
+                                         Future.successful((SlackChannel("FAKE-ID", canonicalName, false), ChannelStatus.Created))
 
                                        case None =>
                                          slackConnector.createChannel(canonicalName).flatMap:
@@ -115,20 +115,33 @@ class SlackService @Inject()(
                                          slackConnector.inviteUsersToChannel(channel.id, newMemberIds)
                                        else
                                          Future.unit
-                  _                 <- if testMode then Future.unit
-                                       else
+                  _                 <- if !testMode then
                                          val editTeamDetails = channelType match
                                            case SlackChannelType.Main   =>
-                                             EditTeamDetails(team.teamName, team.description, team.documentation, Some(channel.name), team.slackNotification)
-                                           case SlackChannelType.Notification => 
-                                             EditTeamDetails(team.teamName, team.description, team.documentation, team.slack, Some(channel.name))
+                                             EditTeamDetails(
+                                               team              = team.teamName,
+                                               description       = team.description,
+                                               documentation     = team.documentation,
+                                               slack             = Some(channel.name),
+                                               slackNotification = team.slackNotification
+                                             )
+                                           case SlackChannelType.Notification =>
+                                               EditTeamDetails(
+                                                 team              = team.teamName,
+                                                 description       = team.description,
+                                                 documentation     = team.documentation,
+                                                 slack             = team.slack,
+                                                 slackNotification = Some(channel.name)
+                                               )
                                          umpConnector.editTeamDetails(editTeamDetails)
+                                       else
+                                         Future.unit
                 yield (channel, status)
           yield res
 
         result.recover { case e =>
           logger.error(s"Failed to sync Slack channel for team '${team.teamName}': ${e.getMessage}", e)
-          (SlackChannel(canonicalName, "FAILED"), ChannelStatus.Failed)
+          (SlackChannel(canonicalName, "FAILED", false), ChannelStatus.Failed)
         }.map(r => acc :+ r)
       }
     yield

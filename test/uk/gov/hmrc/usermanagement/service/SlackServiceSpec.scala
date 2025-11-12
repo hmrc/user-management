@@ -63,7 +63,7 @@ class SlackServiceSpec
         .thenReturn(Future.successful(Seq.empty))
 
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops", false))))
 
       when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
@@ -110,7 +110,7 @@ class SlackServiceSpec
         .thenReturn(Future.successful(Seq.empty))
 
       when(slackConnector.createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts", false))))
 
       when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
@@ -155,7 +155,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops"))))
+        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops", false))))
 
       when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
@@ -204,7 +204,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops-alerts"))))
+        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops-alerts", false))))
 
       when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
@@ -257,5 +257,4 @@ trait SlackServiceSetup:
   val slackConnector: SlackConnector = mock[SlackConnector]
   val umpConnector  : UmpConnector   = mock[UmpConnector]
   val config        : Configuration  = Configuration(ConfigFactory.load("application.conf"))
-
   val service       : SlackService   = SlackService(slackConnector, umpConnector, config)
