@@ -18,13 +18,13 @@ package uk.gov.hmrc.usermanagement.connectors
 
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.Source
-import play.api.Configuration
+import play.api.{Configuration, Logging}
 import play.api.libs.functional.syntax.*
 import play.api.libs.json.{JsValue, Json, Reads, __}
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
-import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps}
+import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
 import uk.gov.hmrc.usermanagement.model.SlackUser
 
 import javax.inject.{Inject, Singleton}
@@ -37,7 +37,7 @@ class SlackConnector @Inject()(
   configuration: Configuration
 )(using
   ExecutionContext
-):
+) extends Logging:
   private lazy val apiUrl: String =
     configuration.get[String]("slack.apiUrl")
 
@@ -76,8 +76,13 @@ class SlackConnector @Inject()(
       .get(url"$apiUrl/users.lookupByEmail?email=$email")
       .setHeader("Authorization" -> s"Bearer $token")
       .withProxy
-      .execute[SlackUserResponse]
-      .map(r => if r.ok then r.user else None)
+      .execute[Either[UpstreamErrorResponse, SlackUserResponse]]
+      .flatMap:
+        case Right(r) =>
+          Future.successful(if r.ok then r.user else None)
+        case Left(e)  =>
+          logger.error(s"Slack API returned ${e.statusCode} for users.lookupByEmail for $email: ${e.getMessage}", e)
+          Future.failed(e)
 
   private def getSlackChannelsPage(cursor: String)(using HeaderCarrier): Future[SlackChannelListPage] =
     given Reads[SlackChannelListPage] = SlackChannelListPage.reads
@@ -85,7 +90,13 @@ class SlackConnector @Inject()(
       .get(url"$apiUrl/conversations.list?limit=$limit&cursor=$cursor&exclude_archived=true&types=public_channel,private_channel")
       .setHeader("Authorization" -> s"Bearer $token")
       .withProxy
-      .execute[SlackChannelListPage]
+      .execute[Either[UpstreamErrorResponse, SlackChannelListPage]]
+      .flatMap:
+        case Right(r) =>
+          Future.successful(r)
+        case Left(e)  =>
+          logger.error(s"Slack API returned ${e.statusCode} for conversations.list: ${e.getMessage}", e)
+          Future.failed(e)
 
   def listAllChannels()(using Materializer, HeaderCarrier): Future[Seq[SlackChannel]] =
     Source
@@ -106,8 +117,13 @@ class SlackConnector @Inject()(
       .setHeader("Authorization" -> s"Bearer $token")
       .withBody(Json.obj("name" -> name))
       .withProxy
-      .execute[SlackChannelResponse]
-      .map(_.channel)
+      .execute[Either[UpstreamErrorResponse, SlackChannelResponse]]
+      .flatMap:
+        case Right(r) =>
+          Future.successful(r.channel)
+        case Left(e)  =>
+          logger.error(s"Slack API returned ${e.statusCode} for conversations.create for $name: ${e.getMessage}", e)
+          Future.failed(e)
 
   def inviteUsersToChannel(channelId: String, userIds: Seq[String])(using HeaderCarrier): Future[Unit] =
     if userIds.isEmpty then Future.unit
@@ -117,8 +133,13 @@ class SlackConnector @Inject()(
         .setHeader("Authorization" -> s"Bearer $token")
         .withBody(Json.obj("channel" -> channelId, "users" -> userIds.mkString(",")))
         .withProxy
-        .execute[JsValue]
-        .map(_ => ())
+        .execute[Either[UpstreamErrorResponse, Unit]]
+        .flatMap:
+          case Right(_) =>
+            Future.unit
+          case Left(e)  =>
+            logger.error(s"Slack API returned ${e.statusCode} for conversations.invite for $channelId: ${e.getMessage}", e)
+            Future.failed(e)
 
   private def getChannelMembersPage(channelId: String, cursor: String)(using HeaderCarrier): Future[SlackChannelMembersResponse] =
     given Reads[SlackChannelMembersResponse] = SlackChannelMembersResponse.reads
@@ -126,7 +147,13 @@ class SlackConnector @Inject()(
       .get(url"$apiUrl/conversations.members?channel=$channelId&limit=$limit&cursor=$cursor")
       .setHeader("Authorization" -> s"Bearer $token")
       .withProxy
-      .execute[SlackChannelMembersResponse]
+      .execute[Either[UpstreamErrorResponse, SlackChannelMembersResponse]]
+      .flatMap:
+        case Right(r) =>
+          Future.successful(r)
+        case Left(e)  =>
+          logger.error(s"Slack API returned ${e.statusCode} for conversations.members for $channelId: ${e.getMessage}", e)
+          Future.failed(e)
 
   def listChannelMembers(channelId: String)(using Materializer, HeaderCarrier): Future[Seq[String]] =
     Source.unfoldAsync(Option(""): Option[String]):
