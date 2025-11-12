@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.usermanagement.service
 
+import com.typesafe.config.ConfigFactory
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
@@ -25,6 +26,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.mockito.MockitoSugar.mock
+import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{EditTeamDetails, Member, SlackChannelType, SlackUser, Team}
@@ -250,6 +252,10 @@ class SlackServiceSpec
 end SlackServiceSpec
 
 trait SlackServiceSetup:
+  private given ActorSystem = ActorSystem("test")
+
   val slackConnector: SlackConnector = mock[SlackConnector]
   val umpConnector  : UmpConnector   = mock[UmpConnector]
-  val service       : SlackService   = SlackService(slackConnector, umpConnector)
+  val config        : Configuration  = Configuration(ConfigFactory.load("application.conf"))
+
+  val service       : SlackService   = SlackService(slackConnector, umpConnector, config)
