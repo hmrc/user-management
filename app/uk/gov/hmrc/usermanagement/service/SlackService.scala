@@ -17,22 +17,33 @@
 package uk.gov.hmrc.usermanagement.service
 
 import cats.syntax.all.*
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern.after
 import org.apache.pekko.stream.Materializer
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{ChannelStatus, EditTeamDetails, SlackChannelType, Team}
 
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SlackService @Inject()(
   slackConnector: SlackConnector,
-  umpConnector  : UmpConnector
+  umpConnector  : UmpConnector,
+  configuration : Configuration
 )(using
+  ActorSystem,
   ExecutionContext
 ) extends Logging:
+
+  private lazy val requestThrottle: FiniteDuration =
+    configuration.get[FiniteDuration]("slack.lookupRequestThrottle")
+
+  private def throttleSlackCalls[T](delay: FiniteDuration)(block: => Future[T])(using system: ActorSystem, ec: ExecutionContext): Future[T] =
+    after(delay, using = system.scheduler)(block)
 
   def ensureChannelExistsAndSyncMembers(
     teams      : Seq[Team],
@@ -56,9 +67,10 @@ class SlackService @Inject()(
 
         val result =
           for
-            emailToUserId <- emails.foldLeftM(List.empty[(String, Option[String])]) { (accEmails, email) =>
-                              slackConnector.lookupUserByEmail(email).map(userOpt => accEmails :+ (email, userOpt.map(_.id)))
-                            }
+            emailToUserId <- emails.foldLeftM(List.empty[(String, Option[String])]) { (acc, email) =>
+                               throttleSlackCalls(requestThrottle){slackConnector.lookupUserByEmail(email)}
+                                 .map(userOpt => acc :+ (email, userOpt.map(_.id)))
+                             }
             foundIds      =  emailToUserId.collect { case (_, Some(id)) => id }.distinct
             missingEmails =  emailToUserId.collect { case (email, None) => email }
 
@@ -103,27 +115,14 @@ class SlackService @Inject()(
                                          slackConnector.inviteUsersToChannel(channel.id, newMemberIds)
                                        else
                                          Future.unit
-                  _                 <- if !testMode then
+                  _                 <- if testMode then Future.unit
+                                       else
                                          val editTeamDetails = channelType match
                                            case SlackChannelType.Main   =>
-                                             EditTeamDetails(
-                                               team              = team.teamName,
-                                               description       = team.description,
-                                               documentation     = team.documentation,
-                                               slack             = Some(channel.name),
-                                               slackNotification = team.slackNotification
-                                             )
+                                             EditTeamDetails(team.teamName, team.description, team.documentation, Some(channel.name), team.slackNotification)
                                            case SlackChannelType.Notification => 
-                                               EditTeamDetails(
-                                                 team              = team.teamName,
-                                                 description       = team.description,
-                                                 documentation     = team.documentation,
-                                                 slack             = team.slack,
-                                                 slackNotification = Some(channel.name)
-                                               )
+                                             EditTeamDetails(team.teamName, team.description, team.documentation, team.slack, Some(channel.name))
                                          umpConnector.editTeamDetails(editTeamDetails)
-                                       else
-                                         Future.unit
                 yield (channel, status)
           yield res
 
