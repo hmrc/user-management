@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.usermanagement.service
 
-import com.typesafe.config.ConfigFactory
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
@@ -26,10 +25,10 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.mockito.MockitoSugar.mock
-import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
-import uk.gov.hmrc.usermanagement.model.{EditTeamDetails, Member, SlackChannelType, SlackUser, Team}
+import uk.gov.hmrc.usermanagement.model.*
+import uk.gov.hmrc.usermanagement.persistence.UsersRepository
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -65,11 +64,7 @@ class SlackServiceSpec
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops"))))
 
-      when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
-
-      when(slackConnector.lookupUserByEmail(eqTo("jane.doe@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("jane.doe@gmail.com"), "U2", "jane.doe", false, false))))
+      when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser)))
 
       when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq.empty))
@@ -89,7 +84,7 @@ class SlackServiceSpec
           team              = "PlatOps",
           description       = Some("desc"),
           documentation     = Some("docs"),
-          slack             = Some("team-platops"),
+          slack             = Some("https://hmrcdigital.slack.com/messages/team-platops"),
           slackNotification = None
         )))(using any[HeaderCarrier])
 
@@ -112,11 +107,7 @@ class SlackServiceSpec
       when(slackConnector.createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts"))))
 
-      when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
-
-      when(slackConnector.lookupUserByEmail(eqTo("jane.doe@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("jane.doe@gmail.com"), "U2", "jane.doe", false, false))))
+      when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser)))
 
       when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq.empty))
@@ -137,7 +128,7 @@ class SlackServiceSpec
           description       = Some("desc"),
           documentation     = Some("docs"),
           slack             = None,
-          slackNotification = Some("team-platops-alerts")
+          slackNotification = Some("https://hmrcdigital.slack.com/messages/team-platops-alerts")
         )))(using any[HeaderCarrier])
 
     "use existing main channel if found, and only add missing members" in new SlackServiceSetup:
@@ -157,14 +148,7 @@ class SlackServiceSpec
       when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops"))))
 
-      when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
-
-      when(slackConnector.lookupUserByEmail(eqTo("jane.doe@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("jane.doe@gmail.com"), "U2", "jane.doe", false, false))))
-
-      when(slackConnector.lookupUserByEmail(eqTo("existing.user@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("existing.user@gmail.com"), "U3", "existing.user", false, false))))
+      when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser, existingUser)))
 
       when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq("U3")))
@@ -184,7 +168,7 @@ class SlackServiceSpec
           team              = "PlatOps",
           description       = None,
           documentation     = None,
-          slack             = Some("team-platops"),
+          slack             = Some("https://hmrcdigital.slack.com/messages/team-platops"),
           slackNotification = None
         ))
       )(using any[HeaderCarrier])
@@ -206,14 +190,7 @@ class SlackServiceSpec
       when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops-alerts"))))
 
-      when(slackConnector.lookupUserByEmail(eqTo("joe.bloggs@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("joe.bloggs@gmail.com"), "U1", "joe.bloggs", false, false))))
-
-      when(slackConnector.lookupUserByEmail(eqTo("jane.doe@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("jane.doe@gmail.com"), "U2", "jane.doe", false, false))))
-
-      when(slackConnector.lookupUserByEmail(eqTo("existing.user@gmail.com"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackUser(Some("existing.user@gmail.com"), "U3", "existing.user", false, false))))
+      when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser, existingUser)))
 
       when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
         .thenReturn(Future.successful(Seq("U3")))
@@ -234,7 +211,7 @@ class SlackServiceSpec
           description       = None,
           documentation     = None,
           slack             = None,
-          slackNotification = Some("team-platops-alerts")
+          slackNotification = Some("https://hmrcdigital.slack.com/messages/team-platops-alerts")
         ))
       )(using any[HeaderCarrier])
 
@@ -245,6 +222,7 @@ class SlackServiceSpec
         .thenReturn(Future.successful(Seq.empty))
       when(slackConnector.createChannel(any[String])(using any[HeaderCarrier]))
         .thenReturn(Future.successful(None))
+      when(usersRepository.find()).thenReturn(Future.successful(Seq.empty[User]))
 
       noException shouldBe thrownBy(service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Main).futureValue)
       noException shouldBe thrownBy(service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Notification).futureValue)
@@ -252,10 +230,58 @@ class SlackServiceSpec
 end SlackServiceSpec
 
 trait SlackServiceSetup:
-  private given ActorSystem = ActorSystem("test")
+  val joeBloggsUser =
+    User(
+      displayName = Some("Joe Bloggs"),
+      familyName = "Bloggs",
+      givenName = Some("Joe"),
+      organisation = None,
+      primaryEmail = "joe.bloggs@gmail.com",
+      slackId = Some("U1"),
+      username = "joe.bloggs",
+      githubUsername = None,
+      phoneNumber = None,
+      role = "developer",
+      teamNames = Seq("team-foo"),
+      isDeleted = false,
+      isNonHuman = false
+    )
 
-  val slackConnector: SlackConnector = mock[SlackConnector]
-  val umpConnector  : UmpConnector   = mock[UmpConnector]
-  val config        : Configuration  = Configuration(ConfigFactory.load("application.conf"))
+  val janeDoeUser =
+    User(
+      displayName = Some("Jane Doe"),
+      familyName = "Doe",
+      givenName = Some("Jane"),
+      organisation = None,
+      primaryEmail = "jane.doe@gmail.com",
+      slackId = Some("U2"),
+      username = "jane.doe",
+      githubUsername = None,
+      phoneNumber = None,
+      role = "developer",
+      teamNames = Seq("team-foo"),
+      isDeleted = false,
+      isNonHuman = false
+    )
 
-  val service       : SlackService   = SlackService(slackConnector, umpConnector, config)
+  val existingUser =
+    User(
+      displayName = Some("Existing User"),
+      familyName = "User",
+      givenName = Some("Existing"),
+      organisation = None,
+      primaryEmail = "existing.user@gmail.com",
+      slackId = Some("U3"),
+      username = "existing.user",
+      githubUsername = None,
+      phoneNumber = None,
+      role = "developer",
+      teamNames = Seq("team-foo"),
+      isDeleted = false,
+      isNonHuman = false
+    )
+
+  val slackConnector : SlackConnector = mock[SlackConnector]
+  val umpConnector   : UmpConnector   = mock[UmpConnector]
+  val usersRepository: UsersRepository   = mock[UsersRepository]
+  val service        : SlackService   = SlackService(slackConnector, umpConnector, usersRepository)
