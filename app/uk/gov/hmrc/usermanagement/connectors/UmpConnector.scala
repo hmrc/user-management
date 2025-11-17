@@ -136,6 +136,18 @@ class UmpConnector @Inject()(
             case Right(_) => Future.unit
             case Left(e) => Future.failed(e)
 
+  def editTeamDetailsFromScheduler(editTeamDetails: EditTeamDetails)(using HeaderCarrier): Future[Unit] =
+    getUserManagementUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .patch(url"$userManagementBaseUrl/v2/organisations/teams/${editTeamDetails.team}")
+          .setHeader(token.asHeaders(): _*)
+          .withBody(Json.toJson(editTeamDetails)(EditTeamDetails.writes))
+          .execute[Either[UpstreamErrorResponse, Unit]]
+          .flatMap:
+            case Right(_) => Future.unit
+            case Left(e) => Future.failed(e)          
+
   def deleteTeam(teamName: String)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>

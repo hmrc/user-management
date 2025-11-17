@@ -72,14 +72,14 @@ class SlackServiceSpec
       when(slackConnector.inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      when(umpConnector.editTeamDetails(any[EditTeamDetails])(using any[HeaderCarrier]))
+      when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
       service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Main).futureValue
 
       verify(slackConnector).createChannel(eqTo("team-platops"))(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
-      verify(umpConnector).editTeamDetails(
+      verify(umpConnector).editTeamDetailsFromScheduler(
         eqTo(EditTeamDetails(
           team              = "PlatOps",
           description       = Some("desc"),
@@ -115,14 +115,14 @@ class SlackServiceSpec
       when(slackConnector.inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      when(umpConnector.editTeamDetails(any[EditTeamDetails])(using any[HeaderCarrier]))
+      when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
       service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Notification).futureValue
 
       verify(slackConnector).createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
-      verify(umpConnector).editTeamDetails(
+      verify(umpConnector).editTeamDetailsFromScheduler(
         eqTo(EditTeamDetails(
           team              = "PlatOps",
           description       = Some("desc"),
@@ -156,14 +156,14 @@ class SlackServiceSpec
       when(slackConnector.inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      when(umpConnector.editTeamDetails(any[EditTeamDetails])(using any[HeaderCarrier]))
+      when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
       service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Main).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
-      verify(umpConnector).editTeamDetails(
+      verify(umpConnector).editTeamDetailsFromScheduler(
         eqTo(EditTeamDetails(
           team              = "PlatOps",
           description       = None,
@@ -198,14 +198,14 @@ class SlackServiceSpec
       when(slackConnector.inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      when(umpConnector.editTeamDetails(any[EditTeamDetails])(using any[HeaderCarrier]))
+      when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
       service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Notification).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
-      verify(umpConnector).editTeamDetails(
+      verify(umpConnector).editTeamDetailsFromScheduler(
         eqTo(EditTeamDetails(
           team              = "PlatOps",
           description       = None,
