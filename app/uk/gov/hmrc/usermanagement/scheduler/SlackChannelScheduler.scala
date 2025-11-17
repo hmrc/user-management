@@ -24,6 +24,7 @@ import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
 import uk.gov.hmrc.usermanagement.connectors.{TeamsAndRepositoriesConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.SlackChannelType
+import uk.gov.hmrc.usermanagement.persistence.TeamsRepository
 import uk.gov.hmrc.usermanagement.service.SlackService
 
 import javax.inject.{Inject, Singleton}
@@ -31,6 +32,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class SlackChannelScheduler @Inject()(
+  teamsRepository              : TeamsRepository,
   teamsAndRepositoriesConnector: TeamsAndRepositoriesConnector,
   umpConnector                 : UmpConnector,
   slackService                 : SlackService,
@@ -58,7 +60,7 @@ class SlackChannelScheduler @Inject()(
     given HeaderCarrier = HeaderCarrier()
     for
       _                 <- Future.successful(logger.info("Beginning user management slack channel sync"))
-      allTeams          <- umpConnector.getAllTeams()
+      allTeams          <- teamsRepository.findAll()
       githubTeams       <- teamsAndRepositoriesConnector.allTeams()
       baseTeams         =  allTeams.filter(t => githubTeams.exists(gt => gt.name.asString.equalsIgnoreCase(t.teamName)))
       missingSlack      =  baseTeams.filter(_.slack.isEmpty)                    

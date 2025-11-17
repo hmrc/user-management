@@ -111,7 +111,7 @@ class SlackService @Inject()(
                                          EditTeamDetails(team.teamName, team.description, team.documentation, Some(s"https://hmrcdigital.slack.com/messages/${channel.name}"), team.slackNotification)
                                        case SlackChannelType.Notification =>
                                          EditTeamDetails(team.teamName, team.description, team.documentation, team.slack, Some(s"https://hmrcdigital.slack.com/messages/${channel.name}"))
-                                     umpConnector.editTeamDetails(editTeamDetails)
+                                     umpConnector.editTeamDetailsFromScheduler(editTeamDetails)
             yield (channel, status)
 
         result.recover { case e =>
