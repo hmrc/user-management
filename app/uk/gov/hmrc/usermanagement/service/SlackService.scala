@@ -37,13 +37,13 @@ class SlackService @Inject()(
 ) extends Logging:
 
   def ensureChannelExistsAndSyncMembers(
-    teams      : Seq[Team],
-    channelType: SlackChannelType,
-    testMode   : Boolean = false
+    teams           : Seq[Team],
+    existingChannels: Seq[SlackChannel],
+    channelType     : SlackChannelType,
+    testMode        : Boolean = false
   )(using Materializer, HeaderCarrier): Future[Unit] =
 
     for
-      existingChannels <- slackConnector.listAllChannels()
       allUsers         <- usersRepository.find()
       results          <- teams.foldLeftM(List.empty[(SlackChannel, ChannelStatus)]) { (acc, team) =>
         val baseName       = normaliseTeamName(team.teamName)
