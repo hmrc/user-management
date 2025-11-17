@@ -58,9 +58,6 @@ class SlackServiceSpec
         slackNotification = None
       )
 
-      when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq.empty))
-
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops"))))
 
@@ -75,7 +72,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Main).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq.empty[SlackChannel], SlackChannelType.Main).futureValue
 
       verify(slackConnector).createChannel(eqTo("team-platops"))(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
@@ -101,9 +98,6 @@ class SlackServiceSpec
         slackNotification = None
       )
 
-      when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq.empty))
-
       when(slackConnector.createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier]))
         .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts"))))
 
@@ -118,7 +112,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Notification).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq.empty[SlackChannel], SlackChannelType.Notification).futureValue
 
       verify(slackConnector).createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
@@ -145,9 +139,6 @@ class SlackServiceSpec
         slackNotification = None
       )
 
-      when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops"))))
-
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser, existingUser)))
 
       when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
@@ -159,7 +150,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Main).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops")), SlackChannelType.Main).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
@@ -187,9 +178,6 @@ class SlackServiceSpec
         slackNotification = None
       )
 
-      when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq(SlackChannel("C123", "team-platops-alerts"))))
-
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser, existingUser)))
 
       when(slackConnector.listChannelMembers(eqTo("C123"))(using any[Materializer], any[HeaderCarrier]))
@@ -201,7 +189,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Notification).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops-alerts")), SlackChannelType.Notification).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
@@ -218,14 +206,12 @@ class SlackServiceSpec
     "log and recover when Slack channel creation fails" in new SlackServiceSetup:
       val team = Team(members = Nil, teamName = "PlatOps", description = None, documentation = None, slack = None, slackNotification = None)
 
-      when(slackConnector.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq.empty))
       when(slackConnector.createChannel(any[String])(using any[HeaderCarrier]))
         .thenReturn(Future.successful(None))
       when(usersRepository.find()).thenReturn(Future.successful(Seq.empty[User]))
 
-      noException shouldBe thrownBy(service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Main).futureValue)
-      noException shouldBe thrownBy(service.ensureChannelExistsAndSyncMembers(Seq(team), SlackChannelType.Notification).futureValue)
+      noException shouldBe thrownBy(service.ensureChannelExistsAndSyncMembers(Seq(team), Seq.empty[SlackChannel], SlackChannelType.Main).futureValue)
+      noException shouldBe thrownBy(service.ensureChannelExistsAndSyncMembers(Seq(team), Seq.empty[SlackChannel], SlackChannelType.Notification).futureValue)
 
 end SlackServiceSpec
 
