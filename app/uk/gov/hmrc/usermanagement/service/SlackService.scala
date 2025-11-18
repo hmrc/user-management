@@ -23,6 +23,12 @@ import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{ChannelStatus, EditTeamDetails, SlackChannelType, Team}
 import uk.gov.hmrc.usermanagement.persistence.UsersRepository
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern.after
+import java.util.concurrent.Semaphore
+import scala.concurrent.duration.*
+import scala.concurrent.Future
+import play.api.Configuration
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,10 +37,23 @@ import scala.concurrent.{ExecutionContext, Future}
 class SlackService @Inject()(
   slackConnector : SlackConnector,
   umpConnector   : UmpConnector,
-  usersRepository: UsersRepository
+  usersRepository: UsersRepository,
+  configuration  : Configuration
 )(using
-  ExecutionContext
+  system: ActorSystem,
+  ec    : ExecutionContext
 ) extends Logging:
+
+  private lazy val slackCreateRateLimit = new Semaphore(1) // one call at a time
+  private lazy val requestThrottle: FiniteDuration =
+    configuration.get[FiniteDuration]("slack.requestThrottle")
+
+  private def slackCreateThrottle[T](block: => Future[T]): Future[T] =
+    Future(slackCreateRateLimit.acquire()).flatMap: _ =>
+      block.andThen:
+        case _ =>
+          after(requestThrottle, system.scheduler):
+            Future(slackCreateRateLimit.release())
 
   def ensureChannelExistsAndSyncMembers(
     teams           : Seq[Team],
@@ -79,7 +98,7 @@ class SlackService @Inject()(
                                      Future.successful((SlackChannel("FAKE-ID", canonicalName), ChannelStatus.Created))
 
                                    case None =>
-                                     slackConnector.createChannel(canonicalName).flatMap:
+                                     slackCreateThrottle{slackConnector.createChannel(canonicalName)}.flatMap:
                                        case Some(created) =>
                                          logger.info(s"Created Slack channel '${created.name}' for team '${team.teamName}'")
                                          Future.successful((created, ChannelStatus.Created))
