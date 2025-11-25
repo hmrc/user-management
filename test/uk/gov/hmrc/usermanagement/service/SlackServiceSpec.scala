@@ -61,7 +61,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops", false))))
 
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser)))
 
@@ -101,7 +101,7 @@ class SlackServiceSpec
       )
 
       when(slackConnector.createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier]))
-        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts"))))
+        .thenReturn(Future.successful(Some(SlackChannel("C123", "team-platops-alerts", false))))
 
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser)))
 
@@ -152,7 +152,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops")), SlackChannelType.Main).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops", false)), SlackChannelType.Main).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])
@@ -191,7 +191,7 @@ class SlackServiceSpec
       when(umpConnector.editTeamDetailsFromScheduler(any[EditTeamDetails])(using any[HeaderCarrier]))
         .thenReturn(Future.unit)
 
-      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops-alerts")), SlackChannelType.Notification).futureValue
+      service.ensureChannelExistsAndSyncMembers(Seq(team), Seq(SlackChannel("C123", "team-platops-alerts", false)), SlackChannelType.Notification).futureValue
 
       verify(slackConnector, never).createChannel(any[String])(using any[HeaderCarrier])
       verify(slackConnector).inviteUsersToChannel(eqTo("C123"), eqTo(Seq("U1", "U2")))(using any[HeaderCarrier])

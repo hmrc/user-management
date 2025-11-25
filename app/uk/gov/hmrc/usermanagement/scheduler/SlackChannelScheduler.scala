@@ -22,7 +22,7 @@ import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
-import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, TeamsAndRepositoriesConnector, UmpConnector}
+import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.usermanagement.model.SlackChannelType
 import uk.gov.hmrc.usermanagement.persistence.TeamsRepository
 import uk.gov.hmrc.usermanagement.service.SlackService
@@ -63,7 +63,7 @@ class SlackChannelScheduler @Inject()(
       allTeams          <- teamsRepository.findAll()
       githubTeams       <- teamsAndRepositoriesConnector.allTeams()
       baseTeams         =  allTeams.filter(t => githubTeams.exists(gt => gt.name.asString.equalsIgnoreCase(t.teamName)))
-      missingSlack      =  baseTeams.filter(_.slack.isEmpty)                    
+      missingSlack      =  baseTeams.filter(_.slack.isEmpty)
       _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlack.size} teams without slack channels to process"))
       existingChannels  <- slackConnector.listAllChannels()
       _                 <- slackService.ensureChannelExistsAndSyncMembers(missingSlack, existingChannels, SlackChannelType.Main, testMode)

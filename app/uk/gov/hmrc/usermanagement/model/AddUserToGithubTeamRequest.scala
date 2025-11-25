@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.model
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
-final case class AddUserToGithubTeamRequest(username: String, team: String)
+case class AddUserToGithubTeamRequest(username: String, team: String)
 
 object AddUserToGithubTeamRequest:
   val reads: Reads[AddUserToGithubTeamRequest] =

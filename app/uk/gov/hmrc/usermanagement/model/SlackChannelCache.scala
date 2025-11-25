@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 HM Revenue & Customs
+ * Copyright 2023 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,15 @@
 
 package uk.gov.hmrc.usermanagement.model
 
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
+import play.api.libs.json.{Json, OFormat}
+import java.time.Instant
+import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats.Implicits.*
 
-case class ManageTeamMembersRequest(username: String, team: String)
+case class SlackChannelCache(
+  channelUrl: String,
+  isPrivate: Boolean,
+  lastUpdated: Instant
+)
 
-object ManageTeamMembersRequest:
-  val reads: Reads[ManageTeamMembersRequest] =
-    ( (__ \ "username").read[String]
-    ~ (__ \ "team"    ).read[String]
-    )(apply)
+object SlackChannelCache:
+  given OFormat[SlackChannelCache] = Json.format[SlackChannelCache]

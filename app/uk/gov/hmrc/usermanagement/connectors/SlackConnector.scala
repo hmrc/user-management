@@ -18,14 +18,14 @@ package uk.gov.hmrc.usermanagement.connectors
 
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.Source
-import play.api.{Configuration, Logging}
 import play.api.libs.functional.syntax.*
-import play.api.libs.json.{JsValue, Json, Reads, __}
+import play.api.libs.json.{Json, Reads, __}
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
+import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.SlackUser
+import uk.gov.hmrc.usermanagement.model.{SlackChannel, SlackUser}
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.FiniteDuration
@@ -179,12 +179,13 @@ private object SlackUserListPage:
     ~ (__ \ "response_metadata" \ "next_cursor").read[String]
     )(SlackUserListPage.apply)
 
-case class SlackChannel(id: String, name: String)
+case class SlackChannel(id: String, name: String, isPrivate: Boolean)
 
 object SlackChannel:
   val reads: Reads[SlackChannel] =
-    ( (__ \ "id"  ).read[String]
-    ~ (__ \ "name").read[String]
+    ( (__ \ "id"         ).read[String]
+    ~ (__ \ "name"       ).read[String]
+    ~ (__ \ "is_private" ).read[Boolean]
     )(SlackChannel.apply)
 
 private case class SlackChannelListPage(channels: Seq[SlackChannel], nextCursor: String)

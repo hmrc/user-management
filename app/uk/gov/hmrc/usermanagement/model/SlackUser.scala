@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.model
 import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 
-final case class SlackUser(
+case class SlackUser(
   email    : Option[String],
   id       : String,
   name     : String,

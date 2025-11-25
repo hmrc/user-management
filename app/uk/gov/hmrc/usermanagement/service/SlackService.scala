@@ -17,21 +17,19 @@
 package uk.gov.hmrc.usermanagement.service
 
 import cats.syntax.all.*
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.pattern.after
 import org.apache.pekko.stream.Materializer
-import play.api.Logging
+import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{ChannelStatus, EditTeamDetails, SlackChannelType, Team}
 import uk.gov.hmrc.usermanagement.persistence.UsersRepository
-import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.pattern.after
-import java.util.concurrent.Semaphore
-import scala.concurrent.duration.*
-import scala.concurrent.Future
-import play.api.Configuration
 
+import java.util.concurrent.Semaphore
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.*
 
 @Singleton
 class SlackService @Inject()(
@@ -85,7 +83,7 @@ class SlackService @Inject()(
         val result =
           if foundIds.isEmpty then
             logger.warn(s"No Slack users found for team '${team.teamName}'. Channel will NOT be created or updated.")
-            Future.successful((SlackChannel("NONE", canonicalName), ChannelStatus.Skipped))
+            Future.successful((SlackChannel("NONE", canonicalName, false), ChannelStatus.Skipped))
           else
             for
               (channel, status) <- channelOpt match
@@ -95,7 +93,8 @@ class SlackService @Inject()(
 
                                    case None if testMode =>
                                      logger.info(s"[TEST MODE] Would create Slack channel '$canonicalName' for team '${team.teamName}'")
-                                     Future.successful((SlackChannel("FAKE-ID", canonicalName), ChannelStatus.Created))
+                                     Future.successful((SlackChannel("FAKE-ID", canonicalName, false), ChannelStatus.Created))
+                                     Future.successful((SlackChannel(canonicalName, "FAKE-ID", false), ChannelStatus.Created))
 
                                    case None =>
                                      slackCreateThrottle{slackConnector.createChannel(canonicalName)}.flatMap:
@@ -135,7 +134,8 @@ class SlackService @Inject()(
 
         result.recover { case e =>
           logger.error(s"Failed to sync Slack channel for team '${team.teamName}': ${e.getMessage}", e)
-          (SlackChannel("FAILED", canonicalName), ChannelStatus.Failed)
+          (SlackChannel("FAILED", canonicalName, false), ChannelStatus.Failed)
+          (SlackChannel(canonicalName, "FAILED", false), ChannelStatus.Failed)
         }.map(r => acc :+ r)
       }
     yield
