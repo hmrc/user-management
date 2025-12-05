@@ -183,12 +183,8 @@ class UserManagementController @Inject()(
         slackChannelCacheRepository.findByChannelUrl(slackChannelUrl).flatMap:
           case Some(cachedSlackChannel) => // Cache hit - return cached value
             Future.successful(Some(TeamSlackChannel(slackChannelUrl, cachedSlackChannel.isPrivate)))
-          case None => // Cache miss - fetch from Slack
-            slackConnector.listAllChannels().flatMap: allChannels =>
-              val isPrivate = allChannels.exists(c => c.name == extractSlackChannelName(slackChannelUrl) && c.isPrivate)
-              slackChannelCacheRepository.upsert(slackChannelUrl, isPrivate).failed.foreach: e =>
-                logger.warn(s"Failed to update cache for channel $slackChannelUrl", e)
-              Future.successful(Some(TeamSlackChannel(slackChannelUrl, isPrivate)))
+          case None => // TODO new solution required - currently returning false to avoid listChannels() for now.
+             Future.successful(Some(TeamSlackChannel(slackChannelUrl, false)))
 
   private def extractSlackChannelName(url: String): String =
     val path =
