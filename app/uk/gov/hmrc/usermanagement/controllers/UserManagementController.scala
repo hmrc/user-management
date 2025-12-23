@@ -53,6 +53,11 @@ class UserManagementController @Inject()(
       .map: res =>
         Ok(Json.toJson(res.sortBy(_.username)))
 
+  def getActiveUsers(): Action[AnyContent] = Action.async:
+    usersRepository.findActive()
+      .map: res =>
+        Ok(Json.toJson(res.sortBy(_.username)))
+
   def getAllTeams(includeNonHuman: Boolean): Action[AnyContent] = Action.async:
     implicit request =>
       for

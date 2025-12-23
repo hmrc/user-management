@@ -89,6 +89,9 @@ class UsersRepository @Inject()(
       )
     ).toFuture()
 
+  def findActive(): Future[Seq[User]] =
+    collection.find(Filters.equal("isDeleted", false)).toFuture()
+
   def search(
     searchTerms    : Seq[String],
     includeDeleted : Boolean,

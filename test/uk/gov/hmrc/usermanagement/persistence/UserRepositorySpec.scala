@@ -298,6 +298,43 @@ class UserRepositorySpec
 
       repository.findByUsername("jane.doe").futureValue shouldBe None
 
+  "UsersRepository.findActive" should:
+    "return only active users" in:
+      val userOne = User(
+        displayName    = Some("Joe Bloggs"),
+        familyName     = "Bloggs",
+        givenName      = Some("Joe"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "joe.bloggs@gmail.com",
+        slackId        = None,
+        username       = "joe.bloggs",
+        githubUsername = None,
+        phoneNumber    = None,
+        role           = "team-admin",
+        teamNames      = Seq("team1", "team2"),
+        isDeleted      = false,
+        isNonHuman     = false
+      )
+
+      val userTwo = User(
+        displayName    = Some("John Smith"),
+        familyName     = "Smith",
+        givenName      = Some("John"),
+        organisation   = Some("MDTP"),
+        primaryEmail   = "john.smith@gmail.com",
+        slackId        = None,
+        username       = "john.smith",
+        githubUsername = None,
+        phoneNumber    = None,
+        role           = "team-admin",
+        teamNames      = Seq("team2"),
+        isDeleted      = true,
+        isNonHuman     = false
+      )
+
+      repository.collection.insertMany(Seq(userOne, userTwo)).toFuture().futureValue
+      repository.findActive().futureValue should contain theSameElementsAs Seq(userOne)
+
   "UsersRepository.search" should:
     val userOne      = User(
       displayName    = Some("Joe Bloggs"),
