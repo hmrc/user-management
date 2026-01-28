@@ -86,6 +86,107 @@ class SlackChannelCacheRepositorySpec
     
   
 
+  "SlackChannelCacheRepository.upsertAll" should :
+    "insert multiple new channels when they do not exist" in :
+      val channels = Seq(
+        ("#engineering", true),
+        ("#alerts", false),
+        ("#team-announcements", true)
+      )
+
+      // when
+      repository.upsertAll(channels).futureValue
+
+      // then
+      val engineering = repository.findByChannelUrl("#engineering").futureValue.value
+      engineering.channelUrl shouldBe "#engineering"
+      engineering.isPrivate shouldBe true
+
+      val alerts = repository.findByChannelUrl("#alerts").futureValue.value
+      alerts.channelUrl shouldBe "#alerts"
+      alerts.isPrivate shouldBe false
+
+      val announcements = repository.findByChannelUrl("#team-announcements").futureValue.value
+      announcements.channelUrl shouldBe "#team-announcements"
+      announcements.isPrivate shouldBe true
+    
+
+    "update existing channels when they already exist" in :
+      val channels = Seq(
+        ("#engineering", false),
+        ("#alerts", false)
+      )
+
+      // given - insert initial values
+      repository.upsertAll(channels).futureValue
+
+      // when - update with different privacy values
+      val updatedChannels = Seq(
+        ("#engineering", true),
+        ("#alerts", true)
+      )
+      repository.upsertAll(updatedChannels).futureValue
+
+      // then
+      val engineering = repository.findByChannelUrl("#engineering").futureValue.value
+      engineering.isPrivate shouldBe true
+
+      val alerts = repository.findByChannelUrl("#alerts").futureValue.value
+      alerts.isPrivate shouldBe true
+
+      // and only one document exists for each channel
+      val engineeringCount = repository.collection
+        .countDocuments(BsonDocument("channelUrl" -> "#engineering"))
+        .toFuture()
+        .futureValue
+      engineeringCount shouldBe 1L
+
+      val alertsCount = repository.collection
+        .countDocuments(BsonDocument("channelUrl" -> "#alerts"))
+        .toFuture()
+        .futureValue
+      alertsCount shouldBe 1L
+    
+
+    "handle empty sequence without error" in :
+      repository.upsertAll(Seq.empty).futureValue
+
+      // then - no documents inserted
+      val count = repository.collection
+        .countDocuments()
+        .toFuture()
+        .futureValue
+      count shouldBe 0L
+    
+
+    "handle mixed insert and update operations" in :
+      // given - one existing channel
+      repository.upsert("#existing", isPrivate = false).futureValue
+
+      // when - bulk operation with both new and existing channels
+      val channels = Seq(
+        ("#existing", true),      // update
+        ("#new-channel", false)   // insert
+      )
+      repository.upsertAll(channels).futureValue
+
+      // then
+      val existing = repository.findByChannelUrl("#existing").futureValue.value
+      existing.isPrivate shouldBe true
+
+      val newChannel = repository.findByChannelUrl("#new-channel").futureValue.value
+      newChannel.channelUrl shouldBe "#new-channel"
+      newChannel.isPrivate shouldBe false
+
+      // and total documents
+      val count = repository.collection
+        .countDocuments()
+        .toFuture()
+        .futureValue
+      count shouldBe 2L
+    
+  
+
   "SlackChannelCacheRepository.findByChannelUrl" should :
     "return None when channel is not cached" in :
       repository.findByChannelUrl("#missing").futureValue shouldBe None

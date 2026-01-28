@@ -76,3 +76,26 @@ class SlackChannelCacheRepository @Inject()(
       .toFuture()
       .map(_ => ())
 
+  def upsertAll(channels: Seq[(String, Boolean)]): Future[Unit] =
+    if channels.isEmpty then
+      Future.successful(())
+    else
+      val now = Instant.now()
+      val updates = channels.map { case (channelUrl, isPrivate) =>
+        UpdateOneModel(
+          BsonDocument("channelUrl" -> channelUrl),
+          Updates.combine(
+            Updates.set("isPrivate", isPrivate),
+            Updates.set("lastUpdated", now),
+            Updates.setOnInsert("channelUrl", channelUrl)
+          ),
+          UpdateOptions().upsert(true)
+        )
+      }
+      
+      collection
+        .bulkWrite(updates)
+        .toFuture()
+        .map(_ => ())
+
+end SlackChannelCacheRepository
