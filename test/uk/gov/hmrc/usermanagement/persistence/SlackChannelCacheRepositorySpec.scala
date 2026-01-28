@@ -86,7 +86,7 @@ class SlackChannelCacheRepositorySpec
     
   
 
-  "SlackChannelCacheRepository.upsertAll" should :
+  "SlackChannelCacheRepository.putAll" should :
     "insert multiple new channels when they do not exist" in :
       val channels = Seq(
         ("https://hmrcdigital.slack.com/messages/team-engineering", true),
@@ -95,7 +95,7 @@ class SlackChannelCacheRepositorySpec
       )
 
       // when
-      repository.upsertAll(channels).futureValue
+      repository.putAll(channels).futureValue
 
       // then
       val engineering = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-engineering").futureValue.value
@@ -118,14 +118,14 @@ class SlackChannelCacheRepositorySpec
       )
 
       // given - insert initial values
-      repository.upsertAll(channels).futureValue
+      repository.putAll(channels).futureValue
 
       // when - update with different privacy values
       val updatedChannels = Seq(
         ("https://hmrcdigital.slack.com/messages/team-engineering", true),
         ("https://hmrcdigital.slack.com/messages/team-alerts", true)
       )
-      repository.upsertAll(updatedChannels).futureValue
+      repository.putAll(updatedChannels).futureValue
 
       // then
       val engineering = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-engineering").futureValue.value
@@ -149,7 +149,7 @@ class SlackChannelCacheRepositorySpec
     
 
     "handle empty sequence without error" in :
-      repository.upsertAll(Seq.empty).futureValue
+      repository.putAll(Seq.empty).futureValue
 
       // then - no documents inserted
       val count = repository.collection
@@ -168,7 +168,7 @@ class SlackChannelCacheRepositorySpec
         ("https://hmrcdigital.slack.com/messages/team-existing", true),      // update
         ("https://hmrcdigital.slack.com/messages/team-new-channel", false)   // insert
       )
-      repository.upsertAll(channels).futureValue
+      repository.putAll(channels).futureValue
 
       // then
       val existing = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-existing").futureValue.value

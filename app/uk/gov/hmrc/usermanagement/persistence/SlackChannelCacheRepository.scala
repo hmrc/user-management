@@ -76,26 +76,30 @@ class SlackChannelCacheRepository @Inject()(
       .toFuture()
       .map(_ => ())
 
-  def upsertAll(channels: Seq[(String, Boolean)]): Future[Unit] =
-    if channels.isEmpty then
-      Future.successful(())
-    else
-      val now = Instant.now()
-      val updates = channels.map { case (channelUrl, isPrivate) =>
-        UpdateOneModel(
-          BsonDocument("channelUrl" -> channelUrl),
-          Updates.combine(
-            Updates.set("isPrivate", isPrivate),
-            Updates.set("lastUpdated", now),
-            Updates.setOnInsert("channelUrl", channelUrl)
-          ),
-          UpdateOptions().upsert(true)
-        )
-      }
-      
-      collection
-        .bulkWrite(updates)
-        .toFuture()
-        .map(_ => ())
+  def putAll(channels: Seq[(String, Boolean)]): Future[Unit] =
+    for
+      old         <- collection.find().toFuture()
+      now         =  Instant.now()
+      channelUrls =  channels.map(_._1).toSet
+      bulkUpdates =  channels.map { case (channelUrl, isPrivate) =>
+                       UpdateOneModel(
+                         BsonDocument("channelUrl" -> channelUrl),
+                         Updates.combine(
+                           Updates.set("isPrivate", isPrivate),
+                           Updates.set("lastUpdated", now),
+                           Updates.setOnInsert("channelUrl", channelUrl)
+                         ),
+                         UpdateOptions().upsert(true)
+                       )
+                     }
+                     ++
+                     old
+                       .filterNot(cached => channelUrls.contains(cached.channelUrl))
+                       .map: cached =>
+                         DeleteOneModel(BsonDocument("channelUrl" -> cached.channelUrl))
+      _           <- if bulkUpdates.isEmpty
+                     then Future.unit
+                     else collection.bulkWrite(bulkUpdates).toFuture().map(_ => ())
+    yield ()
 
 end SlackChannelCacheRepository

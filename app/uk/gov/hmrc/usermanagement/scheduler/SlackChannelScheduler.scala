@@ -67,7 +67,7 @@ class SlackChannelScheduler @Inject()(
       missingSlack      =  baseTeams.filter(_.slack.isEmpty)
       _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlack.size} teams without slack channels to process"))
       existingChannels  <- slackConnector.listAllChannels() 
-      _                 <- slackChannelCacheRepository.upsertAll(existingChannels.map(c => (c.name, c.isPrivate)))
+      _                 <- slackChannelCacheRepository.putAll(existingChannels.map(c => (c.name, c.isPrivate)))
       _                 <- slackService.ensureChannelExistsAndSyncMembers(missingSlack, existingChannels, SlackChannelType.Main, testMode)
       missingSlackAlert =  baseTeams.filter(_.slackNotification.isEmpty)
       _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlackAlert.size} teams without slack notification channels to process"))
