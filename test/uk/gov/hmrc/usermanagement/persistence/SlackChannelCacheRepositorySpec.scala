@@ -48,7 +48,7 @@ class SlackChannelCacheRepositorySpec
 
   "SlackChannelCacheRepository.upsert" should :
     "insert a new document when channel does not exist" in :
-      val channel = "#engineering"
+      val channel = "https://hmrcdigital.slack.com/messages/team-engineering"
 
       // when
       repository.upsert(channel, isPrivate = true).futureValue
@@ -62,7 +62,7 @@ class SlackChannelCacheRepositorySpec
     
 
     "update an existing document when channel already exists" in :
-      val channel = "#alerts"
+      val channel = "https://hmrcdigital.slack.com/messages/team-alerts"
 
       // given
       repository.upsert(channel, isPrivate = false).futureValue
@@ -86,16 +86,117 @@ class SlackChannelCacheRepositorySpec
     
   
 
+  "SlackChannelCacheRepository.putAll" should :
+    "insert multiple new channels when they do not exist" in :
+      val channels = Seq(
+        ("https://hmrcdigital.slack.com/messages/team-engineering", true),
+        ("https://hmrcdigital.slack.com/messages/team-alerts", false),
+        ("https://hmrcdigital.slack.com/messages/team-announcements", true)
+      )
+
+      // when
+      repository.putAll(channels).futureValue
+
+      // then
+      val engineering = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-engineering").futureValue.value
+      engineering.channelUrl shouldBe "https://hmrcdigital.slack.com/messages/team-engineering"
+      engineering.isPrivate shouldBe true
+
+      val alerts = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-alerts").futureValue.value
+      alerts.channelUrl shouldBe "https://hmrcdigital.slack.com/messages/team-alerts"
+      alerts.isPrivate shouldBe false
+
+      val announcements = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-announcements").futureValue.value
+      announcements.channelUrl shouldBe "https://hmrcdigital.slack.com/messages/team-announcements"
+      announcements.isPrivate shouldBe true
+    
+
+    "update existing channels when they already exist" in :
+      val channels = Seq(
+        ("https://hmrcdigital.slack.com/messages/team-engineering", false),
+        ("https://hmrcdigital.slack.com/messages/team-alerts", false)
+      )
+
+      // given - insert initial values
+      repository.putAll(channels).futureValue
+
+      // when - update with different privacy values
+      val updatedChannels = Seq(
+        ("https://hmrcdigital.slack.com/messages/team-engineering", true),
+        ("https://hmrcdigital.slack.com/messages/team-alerts", true)
+      )
+      repository.putAll(updatedChannels).futureValue
+
+      // then
+      val engineering = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-engineering").futureValue.value
+      engineering.isPrivate shouldBe true
+
+      val alerts = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-alerts").futureValue.value
+      alerts.isPrivate shouldBe true
+
+      // and only one document exists for each channel
+      val engineeringCount = repository.collection
+        .countDocuments(BsonDocument("channelUrl" -> "https://hmrcdigital.slack.com/messages/team-engineering"))
+        .toFuture()
+        .futureValue
+      engineeringCount shouldBe 1L
+
+      val alertsCount = repository.collection
+        .countDocuments(BsonDocument("channelUrl" -> "https://hmrcdigital.slack.com/messages/team-alerts"))
+        .toFuture()
+        .futureValue
+      alertsCount shouldBe 1L
+    
+
+    "handle empty sequence without error" in :
+      repository.putAll(Seq.empty).futureValue
+
+      // then - no documents inserted
+      val count = repository.collection
+        .countDocuments()
+        .toFuture()
+        .futureValue
+      count shouldBe 0L
+    
+
+    "handle mixed insert and update operations" in :
+      // given - one existing channel
+      repository.upsert("https://hmrcdigital.slack.com/messages/team-existing", isPrivate = false).futureValue
+
+      // when - bulk operation with both new and existing channels
+      val channels = Seq(
+        ("https://hmrcdigital.slack.com/messages/team-existing", true),      // update
+        ("https://hmrcdigital.slack.com/messages/team-new-channel", false)   // insert
+      )
+      repository.putAll(channels).futureValue
+
+      // then
+      val existing = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-existing").futureValue.value
+      existing.isPrivate shouldBe true
+
+      val newChannel = repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-new-channel").futureValue.value
+      newChannel.channelUrl shouldBe "https://hmrcdigital.slack.com/messages/team-new-channel"
+      newChannel.isPrivate shouldBe false
+
+      // and total documents
+      val count = repository.collection
+        .countDocuments()
+        .toFuture()
+        .futureValue
+      count shouldBe 2L
+    
+  
+
   "SlackChannelCacheRepository.findByChannelUrl" should :
     "return None when channel is not cached" in :
-      repository.findByChannelUrl("#missing").futureValue shouldBe None
+      repository.findByChannelUrl("https://hmrcdigital.slack.com/messages/team-missing").futureValue shouldBe None
     
   
 
   "SlackChannelCacheRepository indexes" should :
     "include a unique index on channelUrl and a TTL index on lastUpdated (7 days)" in :
       // Force index creation by touching the collection
-      repository.upsert("#idx_check", isPrivate = false).futureValue
+      repository.upsert("https://hmrcdigital.slack.com/messages/team-idx_check", isPrivate = false).futureValue
 
       val indexes: Seq[BsonDocument] = repository.collection
         .listIndexes[BsonDocument]()

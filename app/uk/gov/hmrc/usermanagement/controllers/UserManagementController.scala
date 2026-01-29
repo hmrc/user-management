@@ -188,7 +188,7 @@ class UserManagementController @Inject()(
         slackChannelCacheRepository.findByChannelUrl(slackChannelUrl).flatMap:
           case Some(cachedSlackChannel) => // Cache hit - return cached value
             Future.successful(Some(TeamSlackChannel(slackChannelUrl, cachedSlackChannel.isPrivate)))
-          case None => // TODO new solution required - currently returning false to avoid listChannels() for now.
+          case None => 
              Future.successful(Some(TeamSlackChannel(slackChannelUrl, false)))
 
   private def extractSlackChannelName(url: String): String =

@@ -24,7 +24,7 @@ import uk.gov.hmrc.mongo.TimestampSupport
 import uk.gov.hmrc.mongo.lock.{MongoLockRepository, ScheduledLockService}
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, TeamsAndRepositoriesConnector}
 import uk.gov.hmrc.usermanagement.model.SlackChannelType
-import uk.gov.hmrc.usermanagement.persistence.TeamsRepository
+import uk.gov.hmrc.usermanagement.persistence.{SlackChannelCacheRepository, TeamsRepository}
 import uk.gov.hmrc.usermanagement.service.SlackService
 
 import javax.inject.{Inject, Singleton}
@@ -38,6 +38,7 @@ class SlackChannelScheduler @Inject()(
   slackService                 : SlackService,
   configuration                : Configuration,
   mongoLockRepository          : MongoLockRepository,
+  slackChannelCacheRepository  : SlackChannelCacheRepository,                                    
   timestampSupport             : TimestampSupport
 )(using
   ActorSystem
@@ -65,7 +66,8 @@ class SlackChannelScheduler @Inject()(
       baseTeams         =  allTeams.filter(t => githubTeams.exists(gt => gt.name.asString.equalsIgnoreCase(t.teamName)))
       missingSlack      =  baseTeams.filter(_.slack.isEmpty)
       _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlack.size} teams without slack channels to process"))
-      existingChannels  <- slackConnector.listAllChannels()
+      existingChannels  <- slackConnector.listAllChannels() 
+      _                 <- slackChannelCacheRepository.putAll(existingChannels.map(c => (c.name, c.isPrivate)))
       _                 <- slackService.ensureChannelExistsAndSyncMembers(missingSlack, existingChannels, SlackChannelType.Main, testMode)
       missingSlackAlert =  baseTeams.filter(_.slackNotification.isEmpty)
       _                 <- Future.successful(logger.info(s"Slack channel sync has found ${missingSlackAlert.size} teams without slack notification channels to process"))
