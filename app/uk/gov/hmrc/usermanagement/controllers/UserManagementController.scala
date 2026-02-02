@@ -25,7 +25,7 @@ import play.api.mvc.{Action, AnyContent, ControllerComponents, Result}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.play.bootstrap.backend.controller.BackendController
 import uk.gov.hmrc.play.bootstrap.http.ErrorResponse
-import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
+import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.*
 import uk.gov.hmrc.usermanagement.persistence.{SlackChannelCacheRepository, TeamsRepository, UsersRepository}
 import uk.gov.hmrc.usermanagement.service.UserAccessService
@@ -40,14 +40,12 @@ class UserManagementController @Inject()(
     userAccessService           : UserAccessService,
     usersRepository             : UsersRepository,
     teamsRepository             : TeamsRepository,
-    slackConnector              : SlackConnector,
     slackChannelCacheRepository : SlackChannelCacheRepository
   )(using
     ExecutionContext, Materializer
 ) extends BackendController(cc) with Logging:
 
   private given Writes[User] = User.format
-  private given Writes[Team] = Team.format
   def getUsers(team: Option[String], github: Option[String]): Action[AnyContent] = Action.async:
     usersRepository.find(team, github)
       .map: res =>
@@ -117,6 +115,12 @@ class UserManagementController @Inject()(
             umpConnector.editUserDetails(request.body).map:_ =>
               logger.info(s"Updated successfully on UMP but username '${request.body.username}' not found in mongo. Awaiting scheduler for mongo update.")
               Accepted
+
+  def getAvailablePlatforms: Action[AnyContent] = Action.async:
+    implicit request =>
+      umpConnector.getAvailablePlatforms()
+        .map: res =>
+          Ok(Json.toJson(res))
 
   def createTeam: Action[CreateTeamRequest] =
     Action.async(parse.json[CreateTeamRequest](CreateTeamRequest.formats)):
@@ -190,13 +194,6 @@ class UserManagementController @Inject()(
             Future.successful(Some(TeamSlackChannel(slackChannelUrl, cachedSlackChannel.isPrivate)))
           case None => 
              Future.successful(Some(TeamSlackChannel(slackChannelUrl, false)))
-
-  private def extractSlackChannelName(url: String): String =
-    val path =
-      try java.net.URI(url).getPath
-      catch case _: Throwable => url
-    val lastSegment = path.split('/').filterNot(_.isEmpty).lastOption.getOrElse(path)
-    lastSegment.takeWhile(ch => ch != '?' && ch != '#')
 
   def getTeamByTeamName(teamName: String, includeNonHuman: Boolean): Action[AnyContent] = Action.async:
     implicit request =>

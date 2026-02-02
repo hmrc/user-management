@@ -25,7 +25,7 @@ import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HttpReads.Implicits.*
 import uk.gov.hmrc.http.client.HttpClientV2
 import uk.gov.hmrc.http.{HeaderCarrier, StringContextOps, UpstreamErrorResponse}
-import uk.gov.hmrc.usermanagement.model.{SlackChannel, SlackUser}
+import uk.gov.hmrc.usermanagement.model.SlackUser
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.duration.FiniteDuration

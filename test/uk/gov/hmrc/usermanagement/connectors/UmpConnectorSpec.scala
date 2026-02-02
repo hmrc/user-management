@@ -468,6 +468,101 @@ class UmpConnectorSpec
 
         res shouldBe a[UpstreamErrorResponse]
 
+  "getAvailablePlatforms" when :
+    "parsing a valid response" should :
+      "return a list of available platforms" in new Setup:
+        val body =
+          """{
+            |  "values": ["MDTP", "PEGA", "Salesforce"]
+            |}""".stripMargin
+
+        stubFor(
+          get(urlEqualTo("/v2/organisations/tags/platform"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(body)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res = userManagementConnector.getAvailablePlatforms().futureValue
+
+        res shouldBe Seq("MDTP", "PEGA", "Salesforce")
+
+    "parsing an invalid JSON response" should :
+      "throw a JsValidationException" in new Setup:
+        val invalidBody =
+          """{
+            |  "vals": ["MDTP", "PEGA"]
+            |}""".stripMargin
+
+        stubFor(
+          get(urlEqualTo("/v2/organisations/tags/platform"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(invalidBody)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res = userManagementConnector.getAvailablePlatforms().failed.futureValue
+        res shouldBe a[JsValidationException]
+
+    "it receives a non 200 status code response" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/v2/organisations/tags/platform"))
+            .willReturn(
+              aResponse()
+                .withStatus(500)
+            )
+        )
+
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(200)
+                .withBody(JsString("token").toString)
+            )
+        )
+
+        val res = userManagementConnector.getAvailablePlatforms().failed.futureValue
+        res shouldBe a[UpstreamErrorResponse]
+
+    "it receives a 401 response from internal auth" should :
+      "return an UpstreamErrorResponse" in new Setup:
+        stubFor(
+          get(urlEqualTo("/internal-auth/ump/token"))
+            .willReturn(
+              aResponse()
+                .withStatus(401)
+            )
+        )
+
+        val res: Throwable =
+          userManagementConnector.getAvailablePlatforms().failed.futureValue
+
+        res shouldBe a[UpstreamErrorResponse]
+
   "createTeam" when :
     "parsing a valid response" should :
       "return unit" in new Setup:

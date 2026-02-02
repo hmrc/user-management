@@ -25,6 +25,7 @@ POST       /offboard-users                  uk.gov.hmrc.usermanagement.controlle
 
 GET        /teams                           uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAllTeams(includeNonHuman: Boolean ?= false)
 GET        /teams/:team                     uk.gov.hmrc.usermanagement.controllers.UserManagementController.getTeamByTeamName(team, includeNonHuman: Boolean ?= false)
+GET        /platforms                       uk.gov.hmrc.usermanagement.controllers.UserManagementController.getAvailablePlatforms
 POST       /create-team                     uk.gov.hmrc.usermanagement.controllers.UserManagementController.createTeam
 PATCH      /edit-team-details               uk.gov.hmrc.usermanagement.controllers.UserManagementController.editTeamDetails
 DELETE     /delete-team/:team               uk.gov.hmrc.usermanagement.controllers.UserManagementController.deleteTeam(team: String)
