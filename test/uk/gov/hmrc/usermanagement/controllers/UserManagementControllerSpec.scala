@@ -20,10 +20,12 @@ import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.{Materializer, SystemMaterializer}
 import org.mockito.ArgumentMatchers.{any, eq as eqTo}
 import org.mockito.Mockito.{never, verify, when}
+import org.scalactic.Prettifier.default
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.mockito.MockitoSugar
+import play.api.http.Status.OK
 import play.api.libs.json.{JsArray, JsValue, Json}
 import play.api.mvc.ControllerComponents
 import play.api.test.Helpers.{contentAsJson, defaultAwaitTimeout, status}
@@ -48,31 +50,19 @@ class UserManagementControllerSpec
   private given actorSystem   : ActorSystem  = ActorSystem("test")
   private given materializer  : Materializer = SystemMaterializer(actorSystem).materializer
 
-  private def controller(
-    teamsRepository: TeamsRepository,
-    slackConnector:  SlackConnector,
-    slackCache:      SlackChannelCacheRepository
-  ): UserManagementController =
-    val cc: ControllerComponents        = stubMessagesControllerComponents()
-    val dummyUmp: UmpConnector          = mock[UmpConnector]
-    val dummyAccess: UserAccessService  = mock[UserAccessService]
-    val dummyUsersRepo: UsersRepository = mock[UsersRepository]
-    new UserManagementController(
-      cc,
-      dummyUmp,
-      dummyAccess,
-      dummyUsersRepo,
-      teamsRepository,
-      slackConnector,
-      slackCache
-    )
+  private val cc: ControllerComponents                 = stubMessagesControllerComponents()
+  private val mockUmpConnector: UmpConnector           = mock[UmpConnector]
+  private val mockUserAccessService: UserAccessService = mock[UserAccessService]
+  private val mockUsersRepo: UsersRepository           = mock[UsersRepository]
+  private val mockTeamsRepo                            = mock[TeamsRepository]
+  private val mockSlackConnector                       = mock[SlackConnector]
+  private val mockSlackChannelCacheRepo                = mock[SlackChannelCacheRepository]
+
+  private def controller: UserManagementController =
+    new UserManagementController(cc, mockUmpConnector, mockUserAccessService, mockUsersRepo, mockTeamsRepo, mockSlackChannelCacheRepo)
 
   "getAllTeams" should :
     "return teams with slack and slackNotification channel privacy using cache and preserve members when includeNonHuman=true" in :
-      val teamsRepo = mock[TeamsRepository]
-      val slack     = mock[SlackConnector]
-      val cache     = mock[SlackChannelCacheRepository]
-
       val teams = Seq(
         Team(
           members = Seq(
@@ -87,15 +77,13 @@ class UserManagementControllerSpec
         )
       )
 
-      when(teamsRepo.findAll()).thenReturn(Future.successful(teams))
+      when(mockTeamsRepo.findAll()).thenReturn(Future.successful(teams))
       // Cache hit for both
-      when(cache.findByChannelUrl(eqTo("team-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teama", isPrivate = false, Instant.now()))))
-      when(cache.findByChannelUrl(eqTo("alerts-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teama", isPrivate = true, Instant.now()))))
+      when(mockSlackChannelCacheRepo.findByChannelUrl(eqTo("team-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teama", isPrivate = false, Instant.now()))))
+      when(mockSlackChannelCacheRepo.findByChannelUrl(eqTo("alerts-teama"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teama", isPrivate = true, Instant.now()))))
 
-      val ctrl = controller(teamsRepo, slack, cache)
-
-      val result = ctrl.getAllTeams(includeNonHuman = true)(FakeRequest())
-      status(result) shouldBe 200
+      val result = controller.getAllTeams(includeNonHuman = true)(FakeRequest())
+      status(result) shouldBe OK
       val json: JsValue = contentAsJson(result)
 
       val arr = json.as[JsArray].value
@@ -110,14 +98,10 @@ class UserManagementControllerSpec
       (teamJson \ "slackNotification").as[JsValue] shouldBe Json.obj("channel_url" -> "alerts-teama", "is_private" -> true)
 
       // No need to call listAllChannels on cache hit
-      verify(slack, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
+      verify(mockSlackConnector, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
 
 
     "filter non-human members when includeNonHuman=false" in :
-      val teamsRepo = mock[TeamsRepository]
-      val slack     = mock[SlackConnector]
-      val cache     = mock[SlackChannelCacheRepository]
-
       val teams = Seq(
         Team(
           members = Seq(
@@ -132,22 +116,16 @@ class UserManagementControllerSpec
         )
       )
 
-      when(teamsRepo.findAll()).thenReturn(Future.successful(teams))
-      when(cache.findByChannelUrl(eqTo("team-teamb"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamb", isPrivate = false, Instant.now()))))
+      when(mockTeamsRepo.findAll()).thenReturn(Future.successful(teams))
+      when(mockSlackChannelCacheRepo.findByChannelUrl(eqTo("team-teamb"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamb", isPrivate = false, Instant.now()))))
 
-      val ctrl = controller(teamsRepo, slack, cache)
-
-      val result = ctrl.getAllTeams(includeNonHuman = false)(FakeRequest())
-      status(result) shouldBe 200
+      val result = controller.getAllTeams(includeNonHuman = false)(FakeRequest())
+      status(result) shouldBe OK
       val arr = contentAsJson(result).as[JsArray].value
       (arr.head \ "members").as[JsArray].value.length shouldBe 1
 
   "getTeamByTeamName" should :
     "return a team with channel privacy from cache when present" in :
-      val teamsRepo = mock[TeamsRepository]
-      val slack = mock[SlackConnector]
-      val cache = mock[SlackChannelCacheRepository]
-
       val team = Team(
         members           = Seq(Member("u1", None, "u1@email", "role", isNonHuman = false)),
         teamName          = "TeamC",
@@ -157,55 +135,35 @@ class UserManagementControllerSpec
         slackNotification = Some("alerts-teamc")
       )
 
-      when(teamsRepo.findByTeamName(eqTo("TeamC"))).thenReturn(Future.successful(Some(team)))
-      when(cache.findByChannelUrl(eqTo("team-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamc", isPrivate = false, Instant.now()))))
-      when(cache.findByChannelUrl(eqTo("alerts-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teamc", isPrivate = true, Instant.now()))))
+      when(mockTeamsRepo.findByTeamName(eqTo("TeamC"))).thenReturn(Future.successful(Some(team)))
+      when(mockSlackChannelCacheRepo.findByChannelUrl(eqTo("team-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("team-teamc", isPrivate = false, Instant.now()))))
+      when(mockSlackChannelCacheRepo.findByChannelUrl(eqTo("alerts-teamc"))).thenReturn(Future.successful(Some(uk.gov.hmrc.usermanagement.model.SlackChannelCache("alerts-teamc", isPrivate = true, Instant.now()))))
 
-      val ctrl   = controller(teamsRepo, slack, cache)
-      val result = ctrl.getTeamByTeamName("TeamC", includeNonHuman = true)(FakeRequest())
-      status(result) shouldBe 200
+      val result = controller.getTeamByTeamName("TeamC", includeNonHuman = true)(FakeRequest())
+      status(result) shouldBe OK
       val json = contentAsJson(result)
       (json \ "teamName").as[String] shouldBe "TeamC"
       (json \ "slack").as[JsValue] shouldBe Json.obj("channel_url" -> "team-teamc", "is_private" -> false)
       (json \ "slackNotification").as[JsValue] shouldBe Json.obj("channel_url" -> "alerts-teamc", "is_private" -> true)
-      verify(slack, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
+      verify(mockSlackConnector, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
 
+  "getAvailablePlatforms" should:
+    "return 200 OK with the list of platforms in JSON format" in:
+      val expectedPlatforms = Seq("MDTP", "PEGA", "Salesforce")
+      when(mockUmpConnector.getAvailablePlatforms()(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expectedPlatforms))
 
-    /* TODO - remove this test when we have a solution for fetching from Slack
-      - this test is failing because SlackConnector.listAllChannels is mocked to return an empty Seq
-      */
-    "fetch from Slack and cache when not present in cache" ignore :
-      val teamsRepo = mock[TeamsRepository]
-      val slack = mock[SlackConnector]
-      val cache = mock[SlackChannelCacheRepository]
+      val result = controller.getAvailablePlatforms.apply(FakeRequest())
 
-      val team = Team(
-        members           = Nil,
-        teamName          = "TeamD",
-        description       = None,
-        documentation     = None,
-        slack             = Some("team-teamd"),
-        slackNotification = Some("alerts-teamd")
-      )
+      status(result) shouldBe OK
+      contentAsJson(result) shouldBe Json.toJson(expectedPlatforms)
 
-      when(teamsRepo.findByTeamName(eqTo("TeamD"))).thenReturn(Future.successful(Some(team)))
-      when(cache.findByChannelUrl(any[String])).thenReturn(Future.successful(None))
-      when(slack.listAllChannels()(using any[Materializer], any[HeaderCarrier]))
-        .thenReturn(Future.successful(Seq(
-          SlackChannel("CID1", "team-teamd", isPrivate = false),
-          SlackChannel("CID2", "alerts-teamd", isPrivate = true)
-        )))
-      when(cache.upsert(eqTo("team-teamd"), eqTo(false))).thenReturn(Future.unit)
-      when(cache.upsert(eqTo("alerts-teamd"), eqTo(true))).thenReturn(Future.unit)
+    "return 200 OK with empty values if no platforms are found" in:
+      val expectedPlatforms = Seq.empty[String]
+      when(mockUmpConnector.getAvailablePlatforms()(using any[HeaderCarrier]))
+        .thenReturn(Future.successful(expectedPlatforms))
 
-      val ctrl = controller(teamsRepo, slack, cache)
-      val result = ctrl.getTeamByTeamName("TeamD", includeNonHuman = true)(FakeRequest())
-      status(result) shouldBe 200
-      val json = contentAsJson(result)
-      (json \ "slack").as[JsValue] shouldBe Json.obj("channel_url" -> "team-teamd", "is_private" -> false)
-      (json \ "slackNotification").as[JsValue] shouldBe Json.obj("channel_url" -> "alerts-teamd", "is_private" -> true)
-      verify(cache).upsert(eqTo("team-teamd"), eqTo(false))
-      verify(cache).upsert(eqTo("alerts-teamd"), eqTo(true))
+      val result = controller.getAvailablePlatforms.apply(FakeRequest())
 
-
-
+      status(result) shouldBe OK
+      contentAsJson(result) shouldBe Json.toJson(expectedPlatforms)

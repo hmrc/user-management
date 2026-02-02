@@ -150,16 +150,24 @@ class SlackService @Inject()(
 
   private def normaliseTeamName(teamName: String): String =
     "team-" + teamName
-      .replaceAll("\\s+", "-")
-      .replaceAll("[^a-zA-Z0-9-]", "")
+      .replaceAll("\\s*-\\s*", "-")     // remove spaces around hyphen
+      .replaceAll("\\s+", "-")          // replace other spaces with hyphens
+      .replaceAll("[^a-zA-Z0-9-]", "")  // remove disallowed characters
       .toLowerCase
 
   private def generateTeamNameVariants(teamName: String): Set[String] =
     val cleaned = teamName.trim
 
     val camelSplit = cleaned.replaceAll("([a-z])([A-Z])", "$1-$2")
-    val spaceSplit = cleaned.replaceAll("\\s+", "-")
-    val camelAndSpaceSplit = camelSplit.replaceAll("\\s+", "-")
+    val spaceSplit =
+      cleaned
+        .replaceAll("\\s*-\\s*", "-")
+        .replaceAll("\\s+", "-")
+
+    val camelAndSpaceSplit =
+      camelSplit
+        .replaceAll("\\s*-\\s*", "-")
+        .replaceAll("\\s+", "-")
 
     val baseForms = Set(cleaned, camelSplit, spaceSplit, camelAndSpaceSplit)
 

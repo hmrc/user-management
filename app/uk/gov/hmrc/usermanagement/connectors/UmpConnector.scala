@@ -112,6 +112,15 @@ class UmpConnector @Inject()(
             case Right(_) => Future.unit
             case Left(e) => Future.failed(e)
 
+  def getAvailablePlatforms()(using HeaderCarrier): Future[Seq[String]] =
+    given Reads[Seq[String]] = (__ \ "values").read(Reads.seq[String])
+    getUserManagementUmpToken()
+      .flatMap: token =>
+        httpClientV2
+          .get(url"$userManagementBaseUrl/v2/organisations/tags/platform")
+          .setHeader(token.asHeaders(): _*)
+          .execute[Seq[String]]
+
   def createTeam(createTeamRequest: CreateTeamRequest)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>
