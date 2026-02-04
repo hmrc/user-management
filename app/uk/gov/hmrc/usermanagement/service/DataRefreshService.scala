@@ -17,7 +17,6 @@
 package uk.gov.hmrc.usermanagement.service
 
 import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
@@ -25,8 +24,8 @@ import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{SlackUsersRepository, TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class DataRefreshService @Inject()(
@@ -48,14 +47,13 @@ class DataRefreshService @Inject()(
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info(s"Successfully retrieved ${umpUsers.length} users from UMP")
       usersWithSlack       <- addSlackIdsToUsers(umpUsers)
-      umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
-      _                    =  logger.info("Successfully retrieved team names from UMP")
-      teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
-      _                    =  logger.info("Successfully retrieved all teams with members from UMP")
-      usersWithMemberships =  addMembershipsToUsers(usersWithSlack, teamsWithMembers)
-      _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
+      umpTeams             <- umpConnector.getAllTeams()
+      _                    =  logger.info(s"Successfully retrieved ${umpTeams.length} teams from UMP")
+      teamsWithMembers     =  addMembersToTeams(umpTeams, usersWithSlack)
+      _                    =  logger.info(s"Built ${teamsWithMembers.length} teams with members from UMP user data")
+      _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithSlack.length}" +
                                 s"human users into their respective repositories")
-      _                    <- usersRepository.putAll(usersWithMemberships)
+      _                    <- usersRepository.putAll(usersWithSlack)
       _                    =  logger.info("Successfully refreshed users data from UMP.")
       _                    <- teamsRepository.putAll(teamsWithMembers)
       _                    =  logger.info("Successfully refreshed teams data from UMP.")
@@ -90,21 +88,18 @@ class DataRefreshService @Inject()(
           case Some(slackUser) => user.copy(slackId = Some(slackUser.id))
           case None => user
 
-  //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
-  //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
-  private def getTeamsWithMembers(teams: Seq[String])(using Materializer, HeaderCarrier): Future[Seq[Team]] =
-    Source(teams)
-      .throttle(1, umpRequestThrottle)
-      .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))
-      .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
-      .map(_.flatten)
-  
-  private def addMembershipsToUsers(users: Seq[User], teamsWithMembers: Seq[Team]): Seq[User] = 
-    val teamAndMembers: Seq[(String, Member)] = teamsWithMembers.flatMap(team => team.members.map(member => team.teamName -> member))
-    users.map: user =>
-      val membershipsForUser = teamAndMembers.filter(_._2.username == user.username)
-      user.copy(
-        teamNames = membershipsForUser.map(_._1),
-        role      = membershipsForUser.map(_._2).headOption.fold("user")(_.role)
-      )
+  private def addMembersToTeams(teams: Seq[Team], users: Seq[User]): Seq[Team] =
+    teams.map: team =>
+      val members = users
+        .filter(_.teamNames.contains(team.teamName))
+        .map: user =>
+          Member(
+            username     = user.username,
+            role         = user.role,
+            displayName  = user.displayName,
+            primaryEmail = user.primaryEmail,
+            isNonHuman   = user.isNonHuman
+          )
+      team.copy(members = members)
+
 end DataRefreshService
