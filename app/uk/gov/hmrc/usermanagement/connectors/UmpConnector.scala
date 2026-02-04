@@ -399,7 +399,7 @@ object UmpConnector:
     ~ ( __ \ "github"       ).readNullable[String].map(_.map(_.split('/').last))
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
     ~ ( __ \ "role"         ).readWithDefault[String]("user")
-    ~ ( __ \ "teamNames"    ).readWithDefault[Seq[String]](Seq.empty[String])
+    ~ ( __ \ "teams"        ).readWithDefault[Seq[String]](Seq.empty[String])
     ~ ( __ \ "isDeleted"    ).readWithDefault[Boolean](false)
     ~ ( __ \ "isNonHuman"   ).readWithDefault[Boolean](false)
     )(User.apply _)

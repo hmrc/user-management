@@ -49,8 +49,8 @@ class DataRefreshServiceSpec
     "update the Users and Teams repositories based on the data received from UMP" in new Setup:
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
-          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false), //role defaulted to "user" should get updated to admin when refreshed
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq("team1"), isDeleted = false, isNonHuman = false),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), isDeleted = false, isNonHuman = false)
         )))
 
       when(umpConnector.getAllTeams())
@@ -59,25 +59,6 @@ class DataRefreshServiceSpec
           Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
           Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
         )))
-
-      when(umpConnector.getTeamWithMembers("team1"))
-        .thenReturn(Future.successful(Some(
-          Team(
-            members = Seq(Member("joe.bloggs", Some("Joe Bloggs"), "joe.bloggs@gmail.com", "user", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
-          )
-        )))
-
-      when(umpConnector.getTeamWithMembers("team2"))
-        .thenReturn(Future.successful(Some(
-          Team(
-            members = Seq(Member("jane.doe", Some("Jane Doe"), "service@gmail.com", "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
-          )
-        )))
-
-      when(umpConnector.getTeamWithMembers("team3"))
-        .thenReturn(Future.successful(Some(Team(
-          members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
-        ))))
 
       when(slackRepository.findAll())
         .thenReturn(Future.successful(Seq(SlackUser(email= Some("jane.doe@gmail.com"), id= "ABCD", name = "jane.doe", isBot = false, isDeleted = false))))
@@ -86,20 +67,20 @@ class DataRefreshServiceSpec
 
       verify(usersRepository).putAll(Seq(
         User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None,         username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1"), isDeleted = false, isNonHuman = false),
-        User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = Some("ABCD"), username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), isDeleted = false, isNonHuman = false),
+        User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = Some("ABCD"), username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), isDeleted = false, isNonHuman = false)
       ))
 
       verify(teamsRepository).putAll(Seq(
         Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user"      , isNonHuman = false)),       teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "jane.doe"  , displayName = Some("Jane Doe")  , primaryEmail = "service@gmail.com"  , role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "jane.doe"  , displayName = Some("Jane Doe")  , primaryEmail = "jane.doe@gmail.com"  , role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
 
     "Handle users existing in more than one team" in new Setup:
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
-          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1", "team2"), isDeleted = false, isNonHuman = false),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team1", "team2"), isDeleted = false, isNonHuman = false)
         )))
 
       when(umpConnector.getAllTeams())
@@ -108,25 +89,6 @@ class DataRefreshServiceSpec
           Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
           Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
         )))
-
-      when(umpConnector.getTeamWithMembers("team1"))
-        .thenReturn(Future.successful(Some(
-          Team(
-            members = Seq(Member("jane.doe", Some("Jane Doe"), "service@gmail.com", "team-admin", isNonHuman = false), Member("joe.bloggs", Some("Joe Bloggs"), "joe.bloggs@gmail.com", "user", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None
-          )
-        )))
-
-      when(umpConnector.getTeamWithMembers("team2"))
-        .thenReturn(Future.successful(Some(
-          Team(
-            members = Seq(Member("jane.doe", Some("Jane Doe"), "service@gmail.com", "team-admin", isNonHuman = false), Member("joe.bloggs", Some("Joe Bloggs"), "joe.bloggs@gmail.com", "user", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None
-          )
-        )))
-
-      when(umpConnector.getTeamWithMembers("team3"))
-        .thenReturn(Future.successful(Some(Team(
-          members = Seq.empty[Member], teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None
-        ))))
 
       when(slackRepository.findAll())
         .thenReturn(Future.successful(Seq.empty[SlackUser]))
@@ -163,12 +125,12 @@ class DataRefreshServiceSpec
           teamNames      = Seq("team1", "team2"),
           isDeleted      = false,
           isNonHuman     = false
-        ),
+        )
       ))
 
       verify(teamsRepository).putAll(Seq(
-        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "service@gmail.com", role = "team-admin", isNonHuman = false), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "service@gmail.com", role = "team-admin", isNonHuman = false), Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false), Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "jane.doe@gmail.com", role = "team-admin", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false), Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "jane.doe@gmail.com", role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
         Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
       ))
 end DataRefreshServiceSpec
