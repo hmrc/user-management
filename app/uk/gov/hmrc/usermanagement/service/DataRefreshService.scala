@@ -21,7 +21,7 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import play.api.{Configuration, Logging}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
-import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
+import uk.gov.hmrc.usermanagement.model.{SlackUser, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{SlackUsersRepository, TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
@@ -48,16 +48,14 @@ class DataRefreshService @Inject()(
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info(s"Successfully retrieved ${umpUsers.length} users from UMP")
       usersWithSlack       <- addSlackIdsToUsers(umpUsers)
-      umpTeamNames         <- umpConnector.getAllTeams().map(_.map(_.teamName))
-      _                    =  logger.info("Successfully retrieved team names from UMP")
-      teamsWithMembers     <- getTeamsWithMembers(umpTeamNames)
-      _                    =  logger.info("Successfully retrieved all teams with members from UMP")
-      usersWithMemberships =  addMembershipsToUsers(usersWithSlack, teamsWithMembers)
-      _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithMemberships.length} " +
+      umpTeams             <- umpConnector.getAllTeams()
+      _                    =  logger.info(s"Successfully retrieved ${umpTeams.length} teams from UMP")
+      mergedUsers          =  usersWithSlack.map( user => user.copy(role = Option(user.role).getOrElse("user")))
+      _                    =  logger.info(s"Going to insert ${umpTeams.length} teams and ${mergedUsers.length}" +
                                 s"human users into their respective repositories")
-      _                    <- usersRepository.putAll(usersWithMemberships)
+      _                    <- usersRepository.putAll(mergedUsers)
       _                    =  logger.info("Successfully refreshed users data from UMP.")
-      _                    <- teamsRepository.putAll(teamsWithMembers)
+      _                    <- teamsRepository.putAll(umpTeams)
       _                    =  logger.info("Successfully refreshed teams data from UMP.")
     yield ()
 
@@ -90,21 +88,4 @@ class DataRefreshService @Inject()(
           case Some(slackUser) => user.copy(slackId = Some(slackUser.id))
           case None => user
 
-  //Note this step is required, in order to get the roles for each user. This data is not available from the getAllTeams call.
-  //This is because GetAllTeams has a bug, in which the `members` field always returns an empty array.
-  private def getTeamsWithMembers(teams: Seq[String])(using Materializer, HeaderCarrier): Future[Seq[Team]] =
-    Source(teams)
-      .throttle(1, umpRequestThrottle)
-      .mapAsync(1)(teamName => umpConnector.getTeamWithMembers(teamName))
-      .runWith(Sink.collection[Option[Team], Seq[Option[Team]]])
-      .map(_.flatten)
-  
-  private def addMembershipsToUsers(users: Seq[User], teamsWithMembers: Seq[Team]): Seq[User] = 
-    val teamAndMembers: Seq[(String, Member)] = teamsWithMembers.flatMap(team => team.members.map(member => team.teamName -> member))
-    users.map: user =>
-      val membershipsForUser = teamAndMembers.filter(_._2.username == user.username)
-      user.copy(
-        teamNames = membershipsForUser.map(_._1),
-        role      = membershipsForUser.map(_._2).headOption.fold("user")(_.role)
-      )
 end DataRefreshService
