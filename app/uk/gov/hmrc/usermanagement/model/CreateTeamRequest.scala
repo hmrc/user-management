@@ -31,11 +31,24 @@ object CreateTeamRequest:
     )(apply, c => Tuple.fromProductTyped(c))
 
 case class CreateTeamUMPRequest(
-  platform  :Seq[String],
+  tags      :Seq[UmpTag],
   team      :String
 )
 object CreateTeamUMPRequest:
+  private given Format[UmpTag] = UmpTag.formats
+
   val formats: Format[CreateTeamUMPRequest] =
-    ( (__ \ "platform").format[Seq[String]] 
-    ~ (__ \ "team"    ).format[String]
-    )(apply, c => Tuple.fromProductTyped(c))  
+    ( (__ \ "tags").format[Seq[UmpTag]]
+    ~ (__ \ "team").format[String]
+    )(apply, c => Tuple.fromProductTyped(c))
+
+case class UmpTag(
+  tag   : String,
+  values: Seq[String]
+)
+
+object UmpTag:
+  val formats: Format[UmpTag] =
+    ( (__ \ "tag").format[String]
+    ~ (__ \ "values").format[Seq[String]]
+    )(apply, c => Tuple.fromProductTyped(c))

@@ -122,7 +122,11 @@ class UmpConnector @Inject()(
           .execute[Seq[String]]
 
   def createTeam(createTeamRequest: CreateTeamRequest)(using HeaderCarrier): Future[Unit] =
-    val createTeamUMPRequest = CreateTeamUMPRequest(Seq(createTeamRequest.platform), createTeamRequest.team)
+    val createTeamUMPRequest =
+      CreateTeamUMPRequest(
+        tags = Seq(UmpTag(tag = "Platform", values = Seq(createTeamRequest.platform))),
+        team = createTeamRequest.team
+      )
     getUsersUmpToken()
       .flatMap: token =>
         httpClientV2
