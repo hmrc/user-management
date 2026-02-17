@@ -20,12 +20,22 @@ import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 
 case class CreateTeamRequest(
-  organisation: String,
-  team        : String
+  platform  :String,
+  team      :String
 )
 
 object CreateTeamRequest:
   val formats: Format[CreateTeamRequest] =
-    ( (__ \ "organisation"      ).format[String]
-    ~ (__ \ "team"              ).format[String]
+    ( (__ \ "platform").format[String]
+    ~ (__ \ "team"    ).format[String]
     )(apply, c => Tuple.fromProductTyped(c))
+
+case class CreateTeamUMPRequest(
+  platform  :Seq[String],
+  team      :String
+)
+object CreateTeamUMPRequest:
+  val formats: Format[CreateTeamUMPRequest] =
+    ( (__ \ "platform").format[Seq[String]] 
+    ~ (__ \ "team"    ).format[String]
+    )(apply, c => Tuple.fromProductTyped(c))  

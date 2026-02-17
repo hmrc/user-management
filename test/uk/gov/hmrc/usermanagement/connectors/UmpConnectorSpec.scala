@@ -1577,7 +1577,7 @@ trait Setup:
 
   val createTeamRequest: CreateTeamRequest =
     CreateTeamRequest(
-      organisation = "SomeOrg",
+      platform = "SomePlatform",
       team = "SomeTeam"
     )
 

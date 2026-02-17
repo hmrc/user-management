@@ -122,12 +122,13 @@ class UmpConnector @Inject()(
           .execute[Seq[String]]
 
   def createTeam(createTeamRequest: CreateTeamRequest)(using HeaderCarrier): Future[Unit] =
+    val createTeamUMPRequest = CreateTeamUMPRequest(Seq(createTeamRequest.platform), createTeamRequest.team)
     getUsersUmpToken()
       .flatMap: token =>
         httpClientV2
           .post(url"$userManagementBaseUrl/v2/organisations/teams")
           .setHeader(token.asHeaders(): _*)
-          .withBody(Json.toJson(createTeamRequest)(CreateTeamRequest.formats))
+          .withBody(Json.toJson(createTeamUMPRequest)(CreateTeamUMPRequest.formats))
           .execute[Either[UpstreamErrorResponse, Unit]]
           .flatMap:
             case Right(_) => Future.unit
