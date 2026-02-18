@@ -494,7 +494,8 @@ class UmpConnectorSpec
             )
         )
 
-        val res = userManagementConnector.getAvailablePlatforms().futureValue
+        val res: Seq[String] =
+          userManagementConnector.getAvailablePlatforms().futureValue
 
         res shouldBe Seq("MDTP", "PEGA", "Salesforce")
 
@@ -588,6 +589,24 @@ class UmpConnectorSpec
           userManagementConnector.createTeam(createTeamRequest).futureValue
 
         res shouldBe()
+
+        val expectedRequestBody =
+          """{
+            |  "tags": [
+            |    {
+            |      "tag": "Platform",
+            |      "values": [
+            |        "SomePlatform"
+            |      ]
+            |    }
+            |  ],
+            |  "team": "SomeTeam"
+            |}""".stripMargin
+
+        verify(
+          postRequestedFor(urlPathEqualTo("/v2/organisations/teams"))
+            .withRequestBody(equalToJson(expectedRequestBody))
+        )
 
     "it receives a non 2xx status code response" should :
       "return an UpstreamErrorResponse" in new Setup:
@@ -1577,7 +1596,7 @@ trait Setup:
 
   val createTeamRequest: CreateTeamRequest =
     CreateTeamRequest(
-      organisation = "SomeOrg",
+      platform = "SomePlatform",
       team = "SomeTeam"
     )
 

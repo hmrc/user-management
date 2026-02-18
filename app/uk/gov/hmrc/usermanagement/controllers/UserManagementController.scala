@@ -123,7 +123,7 @@ class UserManagementController @Inject()(
           Ok(Json.toJson(res))
 
   def createTeam: Action[CreateTeamRequest] =
-    Action.async(parse.json[CreateTeamRequest](CreateTeamRequest.formats)):
+    Action.async(parse.json[CreateTeamRequest](CreateTeamRequest.reads)):
       implicit request =>
         umpConnector.createTeam(request.body).flatMap: _ =>
           teamsRepository.findByTeamName(request.body.team).flatMap:

@@ -20,12 +20,26 @@ import play.api.libs.functional.syntax.*
 import play.api.libs.json.*
 
 case class CreateTeamRequest(
-  organisation: String,
-  team        : String
+  platform  :String,
+  team      :String
 )
 
 object CreateTeamRequest:
-  val formats: Format[CreateTeamRequest] =
-    ( (__ \ "organisation"      ).format[String]
-    ~ (__ \ "team"              ).format[String]
-    )(apply, c => Tuple.fromProductTyped(c))
+  val reads: Reads[CreateTeamRequest] =
+    ( (__ \ "platform").read[String]
+    ~ (__ \ "team"    ).read[String]
+    )(CreateTeamRequest.apply)
+
+  val writes: Writes[CreateTeamRequest] = Writes { req =>
+    Json.obj(
+      "tags" -> Json.arr(
+        Json.obj(
+          "tag"    -> "Platform",
+          "values" -> Json.arr(req.platform)
+        )
+      ),
+      "team" -> req.team
+    )
+  }
+
+  val formats: Format[CreateTeamRequest] = Format(reads, writes)

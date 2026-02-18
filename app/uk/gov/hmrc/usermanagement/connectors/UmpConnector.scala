@@ -127,7 +127,7 @@ class UmpConnector @Inject()(
         httpClientV2
           .post(url"$userManagementBaseUrl/v2/organisations/teams")
           .setHeader(token.asHeaders(): _*)
-          .withBody(Json.toJson(createTeamRequest)(CreateTeamRequest.formats))
+          .withBody(Json.toJson(createTeamRequest)(CreateTeamRequest.writes))
           .execute[Either[UpstreamErrorResponse, Unit]]
           .flatMap:
             case Right(_) => Future.unit
