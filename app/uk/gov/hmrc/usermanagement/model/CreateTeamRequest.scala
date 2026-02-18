@@ -25,30 +25,21 @@ case class CreateTeamRequest(
 )
 
 object CreateTeamRequest:
-  val formats: Format[CreateTeamRequest] =
-    ( (__ \ "platform").format[String]
-    ~ (__ \ "team"    ).format[String]
-    )(apply, c => Tuple.fromProductTyped(c))
+  val reads: Reads[CreateTeamRequest] =
+    ( (__ \ "platform").read[String]
+    ~ (__ \ "team"    ).read[String]
+    )(CreateTeamRequest.apply)
 
-case class CreateTeamUMPRequest(
-  tags      :Seq[UmpTag],
-  team      :String
-)
-object CreateTeamUMPRequest:
-  private given Format[UmpTag] = UmpTag.formats
+  val writes: Writes[CreateTeamRequest] = Writes { req =>
+    Json.obj(
+      "tags" -> Json.arr(
+        Json.obj(
+          "tag"    -> "Platform",
+          "values" -> Json.arr(req.platform)
+        )
+      ),
+      "team" -> req.team
+    )
+  }
 
-  val formats: Format[CreateTeamUMPRequest] =
-    ( (__ \ "tags").format[Seq[UmpTag]]
-    ~ (__ \ "team").format[String]
-    )(apply, c => Tuple.fromProductTyped(c))
-
-case class UmpTag(
-  tag   : String,
-  values: Seq[String]
-)
-
-object UmpTag:
-  val formats: Format[UmpTag] =
-    ( (__ \ "tag").format[String]
-    ~ (__ \ "values").format[Seq[String]]
-    )(apply, c => Tuple.fromProductTyped(c))
+  val formats: Format[CreateTeamRequest] = Format(reads, writes)
