@@ -55,9 +55,9 @@ class DataRefreshServiceSpec
 
       when(umpConnector.getAllTeams())
         .thenReturn(Future.successful(Seq(
-          Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-          Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
-          Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
+          Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+          Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+          Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty)
         )))
 
       when(slackRepository.findAll())
@@ -71,9 +71,9 @@ class DataRefreshServiceSpec
       ))
 
       verify(teamsRepository).putAll(Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user"      , isNonHuman = false)),       teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "jane.doe"  , displayName = Some("Jane Doe")  , primaryEmail = "jane.doe@gmail.com"  , role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user"      , isNonHuman = false)),       teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+        Team(members = Seq(Member(username = "jane.doe"  , displayName = Some("Jane Doe")  , primaryEmail = "jane.doe@gmail.com"  , role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+        Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty)
       ))
 
     "Handle users existing in more than one team" in new Setup:
@@ -85,9 +85,9 @@ class DataRefreshServiceSpec
 
       when(umpConnector.getAllTeams())
         .thenReturn(Future.successful(Seq(
-          Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-          Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
-          Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
+          Team(members = Seq.empty, teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+          Team(members = Seq.empty, teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+          Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty)
         )))
 
       when(slackRepository.findAll())
@@ -129,9 +129,9 @@ class DataRefreshServiceSpec
       ))
 
       verify(teamsRepository).putAll(Seq(
-        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false), Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "jane.doe@gmail.com", role = "team-admin", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false), Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "jane.doe@gmail.com", role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None),
-        Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None)
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false), Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "jane.doe@gmail.com", role = "team-admin", isNonHuman = false)), teamName = "team1", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+        Team(members = Seq(Member(username = "joe.bloggs", displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "user", isNonHuman = false), Member(username = "jane.doe", displayName = Some("Jane Doe"), primaryEmail = "jane.doe@gmail.com", role = "team-admin", isNonHuman = false)), teamName = "team2", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty),
+        Team(members = Seq.empty, teamName = "team3", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty)
       ))
 end DataRefreshServiceSpec
 
@@ -141,9 +141,8 @@ trait Setup:
   val teamsRepository = mock[TeamsRepository]
   val slackRepository = mock[SlackUsersRepository]
   val slackConnector  = mock[SlackConnector]
-  val config          = Configuration(ConfigFactory.load("application.conf"))
 
-  val service: DataRefreshService = DataRefreshService(umpConnector, usersRepository, teamsRepository, slackRepository, config, slackConnector)
+  val service: DataRefreshService = DataRefreshService(umpConnector, usersRepository, teamsRepository, slackRepository, slackConnector)
 
   when(teamsRepository.putAll(any[Seq[Team]]))
     .thenReturn(Future.successful( () ))
