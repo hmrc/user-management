@@ -33,7 +33,8 @@ case class TeamSlackChannelResponse(
                                      description:       Option[String],
                                      documentation:     Option[String],
                                      slack:             Option[TeamSlackChannel],
-                                     slackNotification: Option[TeamSlackChannel]
+                                     slackNotification: Option[TeamSlackChannel],
+                                     platform:          Seq[String]
                                    )
 
 object TeamSlackChannelResponse:
@@ -67,7 +68,8 @@ object TeamSlackChannelResponse:
     (__ \ "description").formatNullable[String] and
     (__ \ "documentation").formatNullable[String] and
     slackChannelFormat and
-    slackNotificationFormat
+    slackNotificationFormat and
+    (__ \ "platform").format[Seq[String]]
     )(TeamSlackChannelResponse.apply, (r: TeamSlackChannelResponse) =>
-    (r.members, r.teamName, r.description, r.documentation, r.slack, r.slackNotification)
+    (r.members, r.teamName, r.description, r.documentation, r.slack, r.slackNotification, r.platform)
     )

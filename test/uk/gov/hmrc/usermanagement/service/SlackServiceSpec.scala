@@ -57,7 +57,8 @@ class SlackServiceSpec
           Member("jane.doe"  , Some("Jane Doe")  , "jane.doe@gmail.com"  , "user"      , false)
         ),
         slack             = None,
-        slackNotification = None
+        slackNotification = None,
+        platform          = Seq.empty
       )
 
       when(slackConnector.createChannel(eqTo("team-platops"))(using any[HeaderCarrier]))
@@ -97,7 +98,8 @@ class SlackServiceSpec
           Member("jane.doe", Some("Jane Doe"), "jane.doe@gmail.com", "user", false)
         ),
         slack             = None,
-        slackNotification = None
+        slackNotification = None,
+        platform          = Seq.empty
       )
 
       when(slackConnector.createChannel(eqTo("team-platops-alerts"))(using any[HeaderCarrier]))
@@ -138,7 +140,8 @@ class SlackServiceSpec
           Member("existing.user", Some("Existing User"), "existing.user@gmail.com", "user"      , false)
         ),
         slack             = None,
-        slackNotification = None
+        slackNotification = None,
+        platform          = Seq.empty
       )
 
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser, existingUser)))
@@ -177,7 +180,8 @@ class SlackServiceSpec
           Member("existing.user", Some("Existing User"), "existing.user@gmail.com", "user", false)
         ),
         slack             = None,
-        slackNotification = None
+        slackNotification = None,
+        platform          = Seq.empty
       )
 
       when(usersRepository.find()).thenReturn(Future.successful(Seq(joeBloggsUser, janeDoeUser, existingUser)))
@@ -206,7 +210,7 @@ class SlackServiceSpec
       )(using any[HeaderCarrier])
 
     "log and recover when Slack channel creation fails" in new SlackServiceSetup:
-      val team = Team(members = Nil, teamName = "PlatOps", description = None, documentation = None, slack = None, slackNotification = None)
+      val team = Team(members = Nil, teamName = "PlatOps", description = None, documentation = None, slack = None, slackNotification = None, platform = Seq.empty)
 
       when(slackConnector.createChannel(any[String])(using any[HeaderCarrier]))
         .thenReturn(Future.successful(None))

@@ -6,7 +6,15 @@
       "slack": "https://slackchannel.com",
       "slackNotification": "https://slackchannel2.com",
       "description": "A great team",
-      "documentation": "Confluence"
+      "documentation": "Confluence",
+      "tags": [
+        {
+          "tag": "Platform",
+          "values": [
+            "MDTP"
+          ]
+        }
+      ]
     },
     {
       "team": "Other Team",

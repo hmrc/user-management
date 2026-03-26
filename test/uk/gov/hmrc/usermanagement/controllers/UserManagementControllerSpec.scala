@@ -73,7 +73,8 @@ class UserManagementControllerSpec
           description       = Some("d"),
           documentation     = Some("doc"),
           slack             = Some("team-teama"),
-          slackNotification = Some("alerts-teama")
+          slackNotification = Some("alerts-teama"),
+          platform          = Seq("MDTP")
         )
       )
 
@@ -90,13 +91,10 @@ class UserManagementControllerSpec
       arr should have size 1
       val teamJson = arr.head
       (teamJson \ "teamName").as[String] shouldBe "TeamA"
-      // members preserved
       (teamJson \ "members").as[JsArray].value.length shouldBe 2
-      // slack object present
       (teamJson \ "slack").as[JsValue] shouldBe Json.obj("channel_url" -> "team-teama", "is_private" -> false)
-      // slackNotification object present
       (teamJson \ "slackNotification").as[JsValue] shouldBe Json.obj("channel_url" -> "alerts-teama", "is_private" -> true)
-
+      (teamJson \ "platform").as[JsArray].as[Seq[String]] shouldBe Seq("MDTP")
       // No need to call listAllChannels on cache hit
       verify(mockSlackConnector, never).listAllChannels()(using any[Materializer], any[HeaderCarrier])
 
@@ -112,7 +110,8 @@ class UserManagementControllerSpec
           description       = None,
           documentation     = None,
           slack             = Some("team-teamb"),
-          slackNotification = None
+          slackNotification = None,
+          platform          = Seq.empty
         )
       )
 
@@ -132,7 +131,8 @@ class UserManagementControllerSpec
         description       = None,
         documentation     = None,
         slack             = Some("team-teamc"),
-        slackNotification = Some("alerts-teamc")
+        slackNotification = Some("alerts-teamc"),
+        platform          = Seq.empty
       )
 
       when(mockTeamsRepo.findByTeamName(eqTo("TeamC"))).thenReturn(Future.successful(Some(team)))
