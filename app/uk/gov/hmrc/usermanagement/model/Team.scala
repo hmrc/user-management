@@ -25,7 +25,8 @@ case class Team(
  description      : Option[String],
  documentation    : Option[String],
  slack            : Option[String],
- slackNotification: Option[String]
+ slackNotification: Option[String],
+ platform         : Seq[String]
 )
 
 object Team:
@@ -37,6 +38,7 @@ object Team:
     ~ (__ \ "documentation"    ).formatNullable[String]
     ~ (__ \ "slack"            ).formatNullable[String]
     ~ (__ \ "slackNotification").formatNullable[String]
+    ~ (__ \ "platform"         ).formatWithDefault[Seq[String]](Seq.empty)
     )(Team.apply, pt => Tuple.fromProductTyped(pt))
   
 case class Member(

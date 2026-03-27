@@ -17,14 +17,13 @@
 package uk.gov.hmrc.usermanagement.service
 
 import org.apache.pekko.stream.Materializer
-import play.api.{Configuration, Logging}
+import play.api.Logging
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
 import uk.gov.hmrc.usermanagement.persistence.{SlackUsersRepository, TeamsRepository, UsersRepository}
 
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -33,14 +32,10 @@ class DataRefreshService @Inject()(
   usersRepository: UsersRepository,
   teamsRepository: TeamsRepository,
   slackRepository: SlackUsersRepository,
-  config         : Configuration,
   slackConnector : SlackConnector
 )(using
   ExecutionContext
 ) extends Logging:
-
-  private lazy val umpRequestThrottle: FiniteDuration =
-    config.get[FiniteDuration]("ump.requestThrottle")
 
   def updateUsersAndTeams()(using Materializer, HeaderCarrier): Future[Unit] =
     for

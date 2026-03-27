@@ -1274,8 +1274,8 @@ class UmpConnectorSpec
         val res = userManagementConnector.getAllTeams().futureValue
 
         res should contain theSameElementsAs Seq(
-          Team(members = Seq(), teamName = "PlatOps",    description = Some("A great team"), documentation = Some("Confluence"), slack = Some("https://slackchannel.com"), slackNotification = Some("https://slackchannel2.com")),
-          Team(members = Seq(), teamName = "Other Team", description = None,                 documentation = None,               slack = None, slackNotification = None)
+          Team(members = Seq(), teamName = "PlatOps",    description = Some("A great team"), documentation = Some("Confluence"), slack = Some("https://slackchannel.com"), slackNotification = Some("https://slackchannel2.com"), platform = Seq("MDTP")),
+          Team(members = Seq(), teamName = "Other Team", description = None,                 documentation = None,               slack = None, slackNotification = None, platform = Seq.empty)
         )
 
     "parsing an invalid JSON response" should:
@@ -1303,92 +1303,6 @@ class UmpConnectorSpec
         )
 
         val res = userManagementConnector.getAllTeams().failed.futureValue
-        res shouldBe a [UpstreamErrorResponse]
-
-  "getMembersForTeam" when:
-    "parsing a valid response" should:
-      "return a Team with non human users flagged" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("valid-members-of-team.json")
-            )
-        )
-
-        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
-
-        res shouldBe Some(Team(
-          members           = Seq(
-                                Member(username = "joe.bloggs"     , displayName = Some("Joe Bloggs"), primaryEmail = "joe.bloggs@gmail.com", role = "team_admin", isNonHuman = false),
-                                Member(username = "jane.doe"       , displayName = Some("Jane Doe")  , primaryEmail = "jane.doe@gmail.com"  , role = "user"      , isNonHuman = false),
-                                Member(username = "service-account", displayName = Some("service")   , primaryEmail = "service@gmail.com"   , role = "user"      , isNonHuman = true ),
-                                Member(username = "PLaToPs"        , displayName = Some("platops")   , primaryEmail = "platops@gmail.com"   , role = "user"      , isNonHuman = true ),
-                                Member(username = "BUILD"          , displayName = Some("build")     , primaryEmail = "b@gmail.com"         , role = "user"      , isNonHuman = true ),
-                                Member(username = "DePlOy"         , displayName = Some("deploy")    , primaryEmail = "d@gmail.com"         , role = "user"      , isNonHuman = true ),
-                                Member(username = "ddcops_"        , displayName = Some("ddcops")    , primaryEmail = "d@gmail.com"         , role = "user"      , isNonHuman = true ),
-                                Member(username = "Deskpro"        , displayName = Some("deskpro")   , primaryEmail = "d@gmail.com"         , role = "user"      , isNonHuman = true ),
-                                Member(username = "platSEC"        , displayName = Some("platSEC")   , primaryEmail = "p@gmail.com"         , role = "user"      , isNonHuman = true ),
-                              ),
-          teamName          = "PlatOps",
-          description       = None,
-          documentation     = None,
-          slack             = Some("https://slack.com"),
-          slackNotification = None
-        ))
-
-    "parsing an invalid JSON response" should:
-      "throw a JSValidationException" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("invalid-members-of-team.json")
-            )
-        )
-
-        val res = userManagementConnector.getTeamWithMembers("PlatOps").failed.futureValue
-        res shouldBe a [JsValidationException]
-
-    "it receives a 404 status code response" should:
-      "recover with a None" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
-            .willReturn(
-              aResponse()
-                .withStatus(404)
-            )
-        )
-
-        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
-        res shouldBe None
-
-    "it receives a 422 status code response" should:
-      "recover with a None" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
-            .willReturn(
-              aResponse()
-                .withStatus(422)
-            )
-        )
-
-        val res = userManagementConnector.getTeamWithMembers("PlatOps").futureValue
-        res shouldBe None
-
-    "it receives any other non 200 status code response" should:
-      "return an UpstreamErrorResponse" in new Setup:
-        stubFor(
-          get(urlEqualTo("/v2/organisations/teams/PlatOps/members"))
-            .willReturn(
-              aResponse()
-                .withStatus(500)
-            )
-        )
-
-        val res = userManagementConnector.getTeamWithMembers("PlatOps").failed.futureValue
         res shouldBe a [UpstreamErrorResponse]
 
   "requestNewVpnCert" when :

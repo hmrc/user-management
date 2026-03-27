@@ -70,7 +70,8 @@ class UserManagementController @Inject()(
             description       = team.description,
             documentation     = team.documentation,
             slack             = slackChannel,
-            slackNotification = slackNotificationChannel
+            slackNotification = slackNotificationChannel,
+            platform          = team.platform
           )
         )
       yield
@@ -128,7 +129,7 @@ class UserManagementController @Inject()(
         umpConnector.createTeam(request.body).flatMap: _ =>
           teamsRepository.findByTeamName(request.body.team).flatMap:
             case None =>
-              teamsRepository.updateOne(Team(Seq.empty[Member], request.body.team, None, None, None, None))
+              teamsRepository.updateOne(Team(Seq.empty[Member], request.body.team, None, None, None, None, Seq(request.body.platform)))
                 .map(_ => Created)
             case _ =>
               logger.info(s"Team created successfully on UMP but already exists in mongo cache. Awaiting scheduler for mongo update.")
@@ -209,7 +210,8 @@ class UserManagementController @Inject()(
             description       = team.description,
             documentation     = team.documentation,
             slack             = slackChannel,
-            slackNotification = slackNotificationChannel
+            slackNotification = slackNotificationChannel,
+            platform          = team.platform
           )
 
           if includeNonHuman then

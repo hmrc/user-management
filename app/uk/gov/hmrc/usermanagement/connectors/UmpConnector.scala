@@ -249,29 +249,6 @@ class UmpConnector @Inject()(
                  .execute[Seq[Team]]
     yield resp
 
-  def getTeamWithMembers(teamName: String)(using HeaderCarrier): Future[Option[Team]] =
-    given Reads[Team] = umpTeamReads
-    for
-      token <- getUserManagementUmpToken()
-      resp  <- httpClientV2
-                 .get(url"$userManagementBaseUrl/v2/organisations/teams/$teamName/members")
-                 .setHeader(token.asHeaders():_*)
-                 .execute[Option[Team]]
-                 .recover:
-                   case UpstreamErrorResponse.WithStatusCode(422) =>
-                     logger.warn(s"Received a 422 response when getting membersForTeam for teamname: $teamName. " +
-                       s"This is a known issue that can occur when a team has been created in UMP with invalid characters in its name.")
-                     None
-                   case UpstreamErrorResponse.WithStatusCode(404) =>
-                     logger.warn(s"Received a 404 response when getting membersForTeam for teamname: $teamName. " +
-                       s"This indicates the team does not exist within UMP.")
-                     None
-    yield resp.map: team =>
-      team.copy(members = team.members.map:
-        case member if nonHumanIdentifiers.exists(member.username.toLowerCase.contains(_)) => member.copy(isNonHuman = true)
-        case member => member
-      )
-
   def manageVpnAccess(username: String, enableVpn: Boolean)(using HeaderCarrier): Future[Unit] =
     getUsersUmpToken()
       .flatMap: token =>
@@ -409,6 +386,13 @@ object UmpConnector:
     Reads.at[Seq[User]](__ \ "users")
 
   val umpTeamReads: Reads[Team] =
+    val platformReads: Reads[Seq[String]] =
+      (__ \ "tags").readNullable[Seq[JsObject]].map:
+        _.getOrElse(Seq.empty)
+          .find(tag => (tag \ "tag").asOpt[String].contains("Platform"))
+          .flatMap(tag => (tag \ "values").asOpt[Seq[String]])
+          .getOrElse(Seq.empty)
+          
     given Format[Member] = Member.format
     ( (__ \ "members"          ).read[Seq[Member]]
     ~ (__ \ "team"             ).read[String]
@@ -416,6 +400,7 @@ object UmpConnector:
     ~ (__ \ "documentation"    ).readNullable[String]
     ~ (__ \ "slack"            ).readNullable[String]
     ~ (__ \ "slackNotification").readNullable[String]
+    ~ platformReads  
     )(Team.apply _)
 
   val readsAtTeams: Reads[Seq[Team]] =
