@@ -389,10 +389,10 @@ object UmpConnector:
     val platformReads: Reads[Seq[String]] =
       (__ \ "tags").readNullable[Seq[JsObject]].map:
         _.getOrElse(Seq.empty)
-          .find(tag => (tag \ "tag").asOpt[String].contains("Platform"))
+          .find(tag => (tag \ "tag").asOpt[String].contains("platform"))
           .flatMap(tag => (tag \ "values").asOpt[Seq[String]])
           .getOrElse(Seq.empty)
-          
+
     given Format[Member] = Member.format
     ( (__ \ "members"          ).read[Seq[Member]]
     ~ (__ \ "team"             ).read[String]
@@ -400,7 +400,7 @@ object UmpConnector:
     ~ (__ \ "documentation"    ).readNullable[String]
     ~ (__ \ "slack"            ).readNullable[String]
     ~ (__ \ "slackNotification").readNullable[String]
-    ~ platformReads  
+    ~ platformReads
     )(Team.apply _)
 
   val readsAtTeams: Reads[Seq[Team]] =
