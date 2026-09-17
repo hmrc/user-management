@@ -31,6 +31,7 @@ case class User(
   phoneNumber   : Option[String],
   role          : String,
   teamNames     : Seq[String],
+  tools         : UserAccess,
   isDeleted     : Boolean,
   isNonHuman    : Boolean
 )
@@ -48,6 +49,7 @@ object User:
     ~ ( __ \ "phoneNumber"   ).formatNullable[String]
     ~ ( __ \ "role"          ).format[String]
     ~ ( __ \ "teamNames"     ).format[Seq[String]]
+    ~ ( __ \ "tools"         ).formatWithDefault[UserAccess](UserAccess(false, false, false, false, false, false))(UserAccess.mongoFormat) //TODO: Default only required until data is backfilled in mongo then can be removed
     ~ ( __ \ "isDeleted"     ).formatWithDefault[Boolean](false)
     ~ ( __ \ "isNonHuman"    ).formatWithDefault[Boolean](false)
     )(User.apply, pt => Tuple.fromProductTyped(pt))
