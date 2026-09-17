@@ -89,7 +89,7 @@ trait TestSetup:
   val userWithAccess: UserWithAccess =
     UserWithAccess(
       username = username,
-      access = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true),
+      access = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true),
       createdAt = Instant.MAX
     )
 

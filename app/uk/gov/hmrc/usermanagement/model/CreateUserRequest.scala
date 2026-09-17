@@ -72,7 +72,8 @@ case class Access(
   confluence: Boolean,
   environments: Boolean,
   googleApps: Boolean,
-  bitwarden: Boolean
+  bitwarden: Boolean,
+  pagerduty: Boolean
 )
 
 object Access:
@@ -84,6 +85,7 @@ object Access:
     ~ (__ \ "environments").read[Boolean]
     ~ (__ \ "googleApps"  ).read[Boolean]
     ~ (__ \ "bitwarden"   ).read[Boolean]
+    ~ (__ \ "pagerduty"   ).read[Boolean]
     )(Access.apply _)
 
   val writes: OWrites[Access] = (access: Access) =>
@@ -94,7 +96,8 @@ object Access:
       if access.confluence   then Some("confluence"   -> JsString("todo")) else None,
       if access.environments then Some("environments" -> JsString("todo")) else None,
       if access.googleApps   then Some("googleApps"   -> JsString("todo")) else None,
-      if access.bitwarden    then Some("bitwarden"    -> JsString("todo")) else None
+      if access.bitwarden    then Some("bitwarden"    -> JsString("todo")) else None,
+      if access.pagerduty    then Some("pagerduty"    -> JsString("todo")) else None
     ).flatten
 
     JsObject(fields)
@@ -127,7 +130,8 @@ case class EditAccess(
   confluence: Boolean,
   environments: Boolean,
   googleApps: Boolean,
-  bitwarden: Boolean
+  bitwarden: Boolean,
+  pagerduty: Boolean
 )
 
 object EditAccess:
@@ -138,6 +142,7 @@ object EditAccess:
     ~ (__ \ "environments").read[Boolean]
     ~ (__ \ "googleApps"  ).read[Boolean]
     ~ (__ \ "bitwarden"   ).read[Boolean]
+    ~ (__ \ "pagerduty"   ).read[Boolean]
     )(EditAccess.apply _)
 
   val writes: OWrites[EditAccess] = (access: EditAccess) =>
@@ -147,7 +152,8 @@ object EditAccess:
       if access.confluence   then Some("confluence"   -> JsString("todo")) else None,
       if access.environments then Some("environments" -> JsString("todo")) else None,
       if access.googleApps   then Some("googleApps"   -> JsString("todo")) else None,
-      if access.bitwarden    then Some("bitwarden"    -> JsString("todo")) else None
+      if access.bitwarden    then Some("bitwarden"    -> JsString("todo")) else None,
+      if access.pagerduty    then Some("pagerduty"    -> JsString("todo")) else None
     ).flatten
 
     JsObject(fields)

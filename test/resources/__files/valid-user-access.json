@@ -4,7 +4,8 @@
     "dev-tools",
     "googleapps",
     "jira",
-    "vpn"
+    "vpn",
+    "pagerduty"
   ]
 }
 

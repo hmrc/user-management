@@ -35,7 +35,7 @@ class UserAccessRepositorySpec
 
   val username = "joe.bloggs"
 
-  val userAccess = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true)
+  val userAccess = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true)
 
   val now = Instant.now().truncatedTo(ChronoUnit.MILLIS)
 

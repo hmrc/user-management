@@ -1231,7 +1231,7 @@ class UmpConnectorSpec
 
         val res = userManagementConnector.getUserAccess(username).futureValue
 
-        res shouldBe Some(UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true))
+        res shouldBe Some(UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true))
 
     "it receives a 404 status code response" should :
       "recover and return None" in new Setup:
@@ -1525,7 +1525,8 @@ trait Setup:
         confluence = true,
         environments = true,
         googleApps = true,
-        bitwarden = true
+        bitwarden = true,
+        pagerduty = true
       ),
       isReturningUser = false,
       isTransitoryUser = false,
@@ -1562,7 +1563,8 @@ trait Setup:
         confluence = true,
         environments = true,
         googleApps = true,
-        bitwarden = true
+        bitwarden = true,
+        pagerduty = true
       ),
       isExistingLDAPUser = true
     )

@@ -27,7 +27,8 @@ case class UserAccess(
   jira: Boolean,
   confluence: Boolean,
   devTools: Boolean,
-  googleApps: Boolean
+  googleApps: Boolean,
+  pagerduty: Boolean
 )
 
 object UserAccess:
@@ -35,11 +36,12 @@ object UserAccess:
     (__ \ "access").read[List[String]].map: accessList =>
       val normalizedAccess = accessList.map(_.toLowerCase).toSet
       UserAccess(
-        vpn = normalizedAccess.contains("vpn"),
-        jira = normalizedAccess.contains("jira"),
-        confluence = normalizedAccess.contains("confluence"),
-        devTools = normalizedAccess.contains("dev-tools"),
-        googleApps = normalizedAccess.contains("googleapps")
+        vpn         = normalizedAccess.contains("vpn"),
+        jira        = normalizedAccess.contains("jira"),
+        confluence  = normalizedAccess.contains("confluence"),
+        devTools    = normalizedAccess.contains("dev-tools"),
+        googleApps  = normalizedAccess.contains("googleapps"),
+        pagerduty   = normalizedAccess.contains("pagerduty")
       )
 
   val mongoReads: Reads[UserAccess] =
@@ -48,6 +50,7 @@ object UserAccess:
     ~ (__ \ "confluence"  ).read[Boolean]
     ~ (__ \ "devTools"    ).read[Boolean]
     ~ (__ \ "googleApps"  ).read[Boolean]
+    ~ (__ \ "pagerduty"   ).readWithDefault[Boolean](false) //default required until new data is populated, then can be removed
     )(UserAccess.apply _)
 
   val writes: Writes[UserAccess] =
@@ -56,7 +59,8 @@ object UserAccess:
       "jira"       -> userAccess.jira,
       "confluence" -> userAccess.confluence,
       "devTools"   -> userAccess.devTools,
-      "googleApps" -> userAccess.googleApps
+      "googleApps" -> userAccess.googleApps,
+      "pagerduty"  -> userAccess.pagerduty
     )
 
   val mongoFormat: Format[UserAccess] =
