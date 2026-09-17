@@ -28,7 +28,7 @@ import org.scalatestplus.mockito.MockitoSugar.mock
 import play.api.Configuration
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.usermanagement.connectors.{SlackConnector, UmpConnector}
-import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User}
+import uk.gov.hmrc.usermanagement.model.{Member, SlackUser, Team, User, UserAccess}
 import uk.gov.hmrc.usermanagement.persistence.{TeamsRepository, UsersRepository}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -49,8 +49,8 @@ class DataRefreshServiceSpec
     "update the Users and Teams repositories based on the data received from UMP" in new Setup:
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user", teamNames = Seq("team1"), isDeleted = false, isNonHuman = false),
-          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), isDeleted = false, isNonHuman = false)
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1"), tools = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true ), isDeleted = false, isNonHuman = false),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), tools = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = false), isDeleted = false, isNonHuman = false)
         )))
 
       when(umpConnector.getAllTeams())
@@ -66,8 +66,8 @@ class DataRefreshServiceSpec
       service.updateUsersAndTeams().futureValue
 
       verify(usersRepository).putAll(Seq(
-        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None,         username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1"), isDeleted = false, isNonHuman = false),
-        User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = Some("ABCD"), username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), isDeleted = false, isNonHuman = false)
+        User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None,         username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1"), tools = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true ), isDeleted = false, isNonHuman = false),
+        User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = Some("ABCD"), username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team2"), tools = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = false), isDeleted = false, isNonHuman = false)
       ))
 
       verify(teamsRepository).putAll(Seq(
@@ -79,8 +79,8 @@ class DataRefreshServiceSpec
     "Handle users existing in more than one team" in new Setup:
       when(umpConnector.getAllUsers())
         .thenReturn(Future.successful(Seq(
-          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1", "team2"), isDeleted = false, isNonHuman = false),
-          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team1", "team2"), isDeleted = false, isNonHuman = false)
+          User(displayName = Some("Joe Bloggs"), familyName = "Bloggs", givenName = Some("Joe"),  organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = None, phoneNumber = None, role = "user",       teamNames = Seq("team1", "team2"), tools = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true ), isDeleted = false, isNonHuman = false),
+          User(displayName = Some("Jane Doe"),   familyName = "Doe",    givenName = Some("Jane"), organisation = Some("MDTP"), primaryEmail = "jane.doe@gmail.com",   slackId = None, username = "jane.doe",   githubUsername = None, phoneNumber = None, role = "team-admin", teamNames = Seq("team1", "team2"), tools = UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = false), isDeleted = false, isNonHuman = false)
         )))
 
       when(umpConnector.getAllTeams())
@@ -108,6 +108,14 @@ class DataRefreshServiceSpec
           phoneNumber    = None,
           role           = "user",
           teamNames      = Seq("team1", "team2"),
+          tools          = UserAccess(
+                             vpn        = true,
+                             jira       = true,
+                             confluence = true,
+                             devTools   = true,
+                             googleApps = true,
+                             pagerduty  = true
+                           ),
           isDeleted      = false,
           isNonHuman     = false
         ),
@@ -123,6 +131,14 @@ class DataRefreshServiceSpec
           phoneNumber    = None,
           role           = "team-admin",
           teamNames      = Seq("team1", "team2"),
+          tools          = UserAccess(
+                             vpn        = true,
+                             jira       = true,
+                             confluence = true,
+                             devTools   = true,
+                             googleApps = true,
+                             pagerduty  = false
+                           ),
           isDeleted      = false,
           isNonHuman     = false
         )

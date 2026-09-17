@@ -79,15 +79,15 @@ class UmpConnectorSpec
         val res = userManagementConnector.getAllUsers().futureValue
 
         res should contain theSameElementsAs Seq(
-            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs" , givenName = Some("Joe")    , organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs", githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
-            User(displayName = Some("Jane Doe")  , familyName = "Doe"    , givenName = Some("Jane")   , organisation = None        , primaryEmail = "jane.doe@gmail.com"  , slackId = None, username = "jane.doe", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = false),
-            User(displayName = Some("service")   , familyName = "service", givenName = Some("service"), organisation = None        , primaryEmail = "service@gmail.com"   , slackId = None, username = "service-account", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
-            User(displayName = Some("platops")   , familyName = "plat"   , givenName = Some("ops")    , organisation = None        , primaryEmail = "platops@gmail.com"   , slackId = None, username = "PLaToPs", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
-            User(displayName = Some("build")     , familyName = "b"      , givenName = Some("b")      , organisation = None        , primaryEmail = "b@gmail.com"         , slackId = None, username = "BUILD", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
-            User(displayName = Some("deploy")    , familyName = "dep"    , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "DePlOy", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
-            User(displayName = Some("ddcops")    , familyName = "d"      , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "ddcops_", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
-            User(displayName = Some("deskpro")   , familyName = "d"      , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "Deskpro", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
-            User(displayName = Some("platSEC")   , familyName = "p"      , givenName = Some("p")      , organisation = None        , primaryEmail = "p@gmail.com"         , slackId = None, username = "platSEC", githubUsername = None, phoneNumber = None, role="user", teamNames = Seq.empty[String], isDeleted = false, isNonHuman = true),
+            User(displayName = Some("Joe Bloggs"), familyName = "Bloggs" , givenName = Some("Joe")    , organisation = Some("MDTP"), primaryEmail = "joe.bloggs@gmail.com", slackId = None, username = "joe.bloggs"     , githubUsername = Some("hmrc"), phoneNumber = Some("12345678912"), role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = true , jira = true , confluence = true , devTools = true , googleApps = true , pagerduty = true ), isDeleted = false, isNonHuman = false),
+            User(displayName = Some("Jane Doe")  , familyName = "Doe"    , givenName = Some("Jane")   , organisation = None        , primaryEmail = "jane.doe@gmail.com"  , slackId = None, username = "jane.doe"       , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = true , jira = true , confluence = true , devTools = true , googleApps = true , pagerduty = false), isDeleted = false, isNonHuman = false),
+            User(displayName = Some("service")   , familyName = "service", givenName = Some("service"), organisation = None        , primaryEmail = "service@gmail.com"   , slackId = None, username = "service-account", githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = true , jira = true , confluence = true , devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
+            User(displayName = Some("platops")   , familyName = "plat"   , givenName = Some("ops")    , organisation = None        , primaryEmail = "platops@gmail.com"   , slackId = None, username = "PLaToPs"        , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = false, jira = false, confluence = false, devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
+            User(displayName = Some("build")     , familyName = "b"      , givenName = Some("b")      , organisation = None        , primaryEmail = "b@gmail.com"         , slackId = None, username = "BUILD"          , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = false, jira = false, confluence = false, devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
+            User(displayName = Some("deploy")    , familyName = "dep"    , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "DePlOy"         , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = false, jira = false, confluence = false, devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
+            User(displayName = Some("ddcops")    , familyName = "d"      , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "ddcops_"        , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = false, jira = false, confluence = false, devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
+            User(displayName = Some("deskpro")   , familyName = "d"      , givenName = Some("d")      , organisation = None        , primaryEmail = "d@gmail.com"         , slackId = None, username = "Deskpro"        , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = false, jira = false, confluence = false, devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
+            User(displayName = Some("platSEC")   , familyName = "p"      , givenName = Some("p")      , organisation = None        , primaryEmail = "p@gmail.com"         , slackId = None, username = "platSEC"        , githubUsername = None        , phoneNumber = None               , role="user", teamNames = Seq.empty[String], tools = UserAccess(vpn = false, jira = false, confluence = false, devTools = false, googleApps = false, pagerduty = false), isDeleted = false, isNonHuman = true ),
           )
 
     "parsing an invalid JSON response" should:
@@ -992,15 +992,6 @@ class UmpConnectorSpec
         )
 
         stubFor(
-          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("valid-user-access.json")
-            )
-        )
-
-        stubFor(
           get(urlEqualTo("/internal-auth/ump/token"))
             .willReturn(
               aResponse()
@@ -1069,15 +1060,6 @@ class UmpConnectorSpec
             .willReturn(
               aResponse()
                 .withStatus(200)
-            )
-        )
-
-        stubFor(
-          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("valid-user-access.json")
             )
         )
 
@@ -1206,57 +1188,6 @@ class UmpConnectorSpec
         val res: Throwable =
           userManagementConnector.editUserAccess(editUserAccessRequest).failed.futureValue
 
-        res shouldBe a[UpstreamErrorResponse]
-
-  "getUserAccess" when :
-    "parsing a valid response" should :
-      "return a UserAccess" in new Setup:
-        stubFor(
-          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBodyFile("valid-user-access.json")
-            )
-        )
-
-        stubFor(
-          get(urlEqualTo("/internal-auth/ump/token"))
-            .willReturn(
-              aResponse()
-                .withStatus(200)
-                .withBody(JsString("token").toString)
-            )
-        )
-
-        val res = userManagementConnector.getUserAccess(username).futureValue
-
-        res shouldBe Some(UserAccess(vpn = true, jira = true, confluence = true, devTools = true, googleApps = true, pagerduty = true))
-
-    "it receives a 404 status code response" should :
-      "recover and return None" in new Setup:
-        stubFor(
-          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
-            .willReturn(
-              aResponse()
-                .withStatus(404)
-            )
-        )
-
-        val res = userManagementConnector.getUserAccess(username).futureValue
-        res shouldBe None
-
-    "it receives a non 200 status code response" should :
-      "recover and return None" in new Setup:
-        stubFor(
-          get(urlEqualTo(s"/v2/organisations/users/$username/access"))
-            .willReturn(
-              aResponse()
-                .withStatus(500)
-            )
-        )
-
-        val res = userManagementConnector.getAllTeams().failed.futureValue
         res shouldBe a[UpstreamErrorResponse]
 
   "getAllTeams" when:

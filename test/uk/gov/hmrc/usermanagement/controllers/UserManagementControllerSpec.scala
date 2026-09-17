@@ -35,7 +35,6 @@ import uk.gov.hmrc.play.bootstrap.tools.Stubs.stubMessagesControllerComponents
 import uk.gov.hmrc.usermanagement.connectors.{SlackChannel, SlackConnector, UmpConnector}
 import uk.gov.hmrc.usermanagement.model.{Member, Team}
 import uk.gov.hmrc.usermanagement.persistence.{SlackChannelCacheRepository, TeamsRepository, UsersRepository}
-import uk.gov.hmrc.usermanagement.service.UserAccessService
 
 import java.time.Instant
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -52,14 +51,13 @@ class UserManagementControllerSpec
 
   private val cc: ControllerComponents                 = stubMessagesControllerComponents()
   private val mockUmpConnector: UmpConnector           = mock[UmpConnector]
-  private val mockUserAccessService: UserAccessService = mock[UserAccessService]
   private val mockUsersRepo: UsersRepository           = mock[UsersRepository]
   private val mockTeamsRepo                            = mock[TeamsRepository]
   private val mockSlackConnector                       = mock[SlackConnector]
   private val mockSlackChannelCacheRepo                = mock[SlackChannelCacheRepository]
 
   private def controller: UserManagementController =
-    new UserManagementController(cc, mockUmpConnector, mockUserAccessService, mockUsersRepo, mockTeamsRepo, mockSlackChannelCacheRepo)
+    new UserManagementController(cc, mockUmpConnector, mockUsersRepo, mockTeamsRepo, mockSlackChannelCacheRepo)
 
   "getAllTeams" should :
     "return teams with slack and slackNotification channel privacy using cache and preserve members when includeNonHuman=true" in :

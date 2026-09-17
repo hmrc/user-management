@@ -19,7 +19,7 @@ package uk.gov.hmrc.usermanagement.persistence
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import uk.gov.hmrc.mongo.test.DefaultPlayMongoRepositorySupport
-import uk.gov.hmrc.usermanagement.model.User
+import uk.gov.hmrc.usermanagement.model.{User, UserAccess}
 import org.mongodb.scala.ObservableFuture
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -51,6 +51,14 @@ class UserRepositorySpec
           phoneNumber    = None,
           role           = "user",
           teamNames      = Seq("team1"),
+          tools          = UserAccess(
+                             vpn        = true,
+                             jira       = true,
+                             confluence = true,
+                             devTools   = true,
+                             googleApps = true,
+                             pagerduty  = true
+                           ),
           isDeleted      = false,
           isNonHuman     = false
         )
@@ -69,6 +77,14 @@ class UserRepositorySpec
           phoneNumber    = None,
           role           = "user",
           teamNames      = Seq("team2"),
+          tools          = UserAccess(
+                             vpn        = true,
+                             jira       = true,
+                             confluence = true,
+                             devTools   = true,
+                             googleApps = true,
+                             pagerduty  = true
+                           ),
           isDeleted      = false,
           isNonHuman     = false
         ),
@@ -84,6 +100,14 @@ class UserRepositorySpec
           phoneNumber    = None,
           role           = "user",
           teamNames      = Seq("team3"),
+          tools          = UserAccess(
+                             vpn        = true,
+                             jira       = true,
+                             confluence = true,
+                             devTools   = true,
+                             googleApps = true,
+                             pagerduty  = false
+                           ),
           isDeleted      = false,
           isNonHuman     = false
         )
@@ -110,6 +134,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team1","team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
         )
@@ -126,6 +158,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "user",
         teamNames      = Seq.empty[String],
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -142,6 +182,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "user",
         teamNames      = Seq.empty[String],
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = false
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -168,6 +216,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team1"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -184,6 +240,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team1","team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -200,6 +264,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team1","team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = false
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -226,6 +298,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team1","team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -242,6 +322,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -268,6 +356,14 @@ class UserRepositorySpec
       phoneNumber    = None,
       role           = "team-admin",
       teamNames      = Seq("team1", "team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
       isDeleted      = false,
       isNonHuman     = false
     )
@@ -284,6 +380,14 @@ class UserRepositorySpec
       phoneNumber    = None,
       role           = "team-admin",
       teamNames      = Seq("team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
       isDeleted      = false,
       isNonHuman     = false
     )
@@ -312,6 +416,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team1", "team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = false,
         isNonHuman     = false
       )
@@ -328,6 +440,14 @@ class UserRepositorySpec
         phoneNumber    = None,
         role           = "team-admin",
         teamNames      = Seq("team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
         isDeleted      = true,
         isNonHuman     = false
       )
@@ -348,6 +468,14 @@ class UserRepositorySpec
       phoneNumber    = None,
       role           = "team-admin",
       teamNames      = Seq("team1", "team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
       isDeleted      = false,
       isNonHuman     = false
     )
@@ -364,6 +492,14 @@ class UserRepositorySpec
       phoneNumber    = None,
       role           = "team-admin",
       teamNames      = Seq("team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
       isDeleted      = false,
       isNonHuman     = false
     )
@@ -380,6 +516,14 @@ class UserRepositorySpec
       phoneNumber    = None,
       role           = "team-admin",
       teamNames      = Seq("team2"),
+        tools          = UserAccess(
+                           vpn        = true,
+                           jira       = true,
+                           confluence = true,
+                           devTools   = true,
+                           googleApps = true,
+                           pagerduty  = true
+                         ),
       isDeleted      = true,
       isNonHuman     = false
     )
@@ -396,6 +540,14 @@ class UserRepositorySpec
       phoneNumber    = None,
       role           = "user",
       teamNames      = Seq("team2"),
+        tools          = UserAccess(
+                           vpn        = false,
+                           jira       = false,
+                           confluence = false,
+                           devTools   = false,
+                           googleApps = false,
+                           pagerduty  = false
+                         ),
       isDeleted      = false,
       isNonHuman     = true
     )

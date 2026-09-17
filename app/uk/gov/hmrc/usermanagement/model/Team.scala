@@ -53,7 +53,7 @@ object Member:
   val format: OFormat[Member] =
     ( (__ \ "username"    ).format[String]
     ~ (__ \ "displayName" ).formatNullable[String]
-    ~ (__ \ "primaryEmail").formatWithDefault[String]("Unknown") // Required until the DataRefreshScheduler runs and backfills existing data
+    ~ (__ \ "primaryEmail").format[String]
     ~ (__ \ "role"        ).format[String]
     ~ (__ \ "isNonHuman"  ).formatWithDefault[Boolean](false)
     )(Member.apply, pt => Tuple.fromProductTyped(pt))

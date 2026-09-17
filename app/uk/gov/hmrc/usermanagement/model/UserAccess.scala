@@ -23,17 +23,17 @@ import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
 import java.time.Instant
 
 case class UserAccess(
-  vpn: Boolean,
-  jira: Boolean,
+  vpn       : Boolean,
+  jira      : Boolean,
   confluence: Boolean,
-  devTools: Boolean,
+  devTools  : Boolean,
   googleApps: Boolean,
-  pagerduty: Boolean
+  pagerduty : Boolean
 )
 
 object UserAccess:
   val reads: Reads[UserAccess] =
-    (__ \ "access").read[List[String]].map: accessList =>
+    (__).read[List[String]].map: accessList =>
       val normalizedAccess = accessList.map(_.toLowerCase).toSet
       UserAccess(
         vpn         = normalizedAccess.contains("vpn"),
@@ -45,12 +45,12 @@ object UserAccess:
       )
 
   val mongoReads: Reads[UserAccess] =
-    ( (__ \ "vpn"         ).read[Boolean]
-    ~ (__ \ "jira"        ).read[Boolean]
-    ~ (__ \ "confluence"  ).read[Boolean]
-    ~ (__ \ "devTools"    ).read[Boolean]
-    ~ (__ \ "googleApps"  ).read[Boolean]
-    ~ (__ \ "pagerduty"   ).readWithDefault[Boolean](false) //default required until new data is populated, then can be removed
+    ( (__ \ "vpn"       ).read[Boolean]
+    ~ (__ \ "jira"      ).read[Boolean]
+    ~ (__ \ "confluence").read[Boolean]
+    ~ (__ \ "devTools"  ).read[Boolean]
+    ~ (__ \ "googleApps").read[Boolean]
+    ~ (__ \ "pagerduty" ).read[Boolean]
     )(UserAccess.apply _)
 
   val writes: Writes[UserAccess] =
@@ -65,18 +65,3 @@ object UserAccess:
 
   val mongoFormat: Format[UserAccess] =
     Format(mongoReads, writes)
-
-case class UserWithAccess(
-   username: String,
-   access: UserAccess,
-   createdAt: Instant
-)
-
-object UserWithAccess:
-  val format: OFormat[UserWithAccess] =
-    given Format[UserAccess] = UserAccess.mongoFormat
-    given Format[Instant]   = MongoJavatimeFormats.instantFormat
-    ( (__ \ "username" ).format[String]
-    ~ (__ \ "access"   ).format[UserAccess]
-    ~ (__ \ "createdAt").format[Instant]
-    )(UserWithAccess.apply, u => Tuple.fromProductTyped(u))

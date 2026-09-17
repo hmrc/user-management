@@ -192,20 +192,6 @@ class UmpConnector @Inject()(
             case Right(_) => Future.unit
             case Left(e)  => Future.failed(e)
 
-  def getUserAccess(username: String)(using HeaderCarrier): Future[Option[UserAccess]] =
-    given Reads[UserAccess] = UserAccess.reads
-    getUserManagementUmpToken()
-      .flatMap: token =>
-        httpClientV2
-          .get(url"$userManagementBaseUrl/v2/organisations/users/$username/access")
-          .setHeader(token.asHeaders():_*)
-          .execute[Option[UserAccess]]
-          .recover:
-            case UpstreamErrorResponse.WithStatusCode(404) =>
-              logger.warn(s"Received a 404 response when getting access for user: $username. " +
-                s"This indicates the user does not exist within UMP.")
-              None
-
   def getUserRoles(username: String)(using HeaderCarrier): Future[UserRoles] =
     given Reads[UserRoles] = UserRoles.reads
     getUsersUmpToken()
@@ -374,6 +360,7 @@ object UmpConnector:
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
     ~ ( __ \ "role"         ).readWithDefault[String]("user")
     ~ ( __ \ "teams"        ).readWithDefault[Seq[String]](Seq.empty[String])
+    ~ ( __ \ "tools"        ).read[UserAccess](UserAccess.reads)
     ~ ( __ \ "isDeleted"    ).readWithDefault[Boolean](false)
     ~ ( __ \ "isNonHuman"   ).readWithDefault[Boolean](false)
     )(User.apply _)
