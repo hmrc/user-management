@@ -49,8 +49,7 @@
       "familyName": "plat",
       "givenName": "ops",
       "primaryEmail": "platops@gmail.com",
-      "username": "PLaToPs",
-      "tools": []
+      "username": "PLaToPs"
     },
     {
       "displayName": "build",
@@ -58,7 +57,7 @@
       "givenName": "b",
       "primaryEmail": "b@gmail.com",
       "username": "BUILD",
-      "tools": []
+      "tools": null
     },
     {
       "displayName": "deploy",
