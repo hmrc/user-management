@@ -77,8 +77,10 @@ class UmpConnector @Inject()(
 
   def getAllUsers()(using HeaderCarrier): Future[Seq[User]] =
     given Reads[Seq[User]] = readsAtUsers
+    logger.info("Acquiring UMP authentication token for user retrieval")
     for
       token <- getUserManagementUmpToken()
+      _     =  logger.info("UMP authentication token acquired; requesting all users")
       resp  <- httpClientV2
                  .get(url"$userManagementBaseUrl/v2/organisations/users?includeDeleted=true")
                  .setHeader(token.asHeaders():_*)
