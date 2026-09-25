@@ -53,7 +53,7 @@ object Member:
   val format: OFormat[Member] =
     ( (__ \ "username"    ).format[String]
     ~ (__ \ "displayName" ).formatNullable[String]
-    ~ (__ \ "primaryEmail").format[String]
+    ~ (__ \ "primaryEmail").formatWithDefault[String]("Unknown")
     ~ (__ \ "role"        ).format[String]
     ~ (__ \ "isNonHuman"  ).formatWithDefault[Boolean](false)
     )(Member.apply, pt => Tuple.fromProductTyped(pt))
