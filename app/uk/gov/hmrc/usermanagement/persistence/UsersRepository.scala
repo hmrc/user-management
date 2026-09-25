@@ -48,9 +48,8 @@ class UsersRepository @Inject()(
   def putAll(users: Seq[User]): Future[Unit] =
     for
       old         <- collection.find().toFuture()
-      bulkUpdates =  //upsert any that were not present already
+      bulkUpdates = //upsert all users
                      users
-                       .filterNot(old.contains)
                        .map: entry =>
                          ReplaceOneModel(
                            Filters.equal("username", entry.username),
