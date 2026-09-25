@@ -38,18 +38,22 @@ class DataRefreshService @Inject()(
 ) extends Logging:
 
   def updateUsersAndTeams()(using Materializer, HeaderCarrier): Future[Unit] =
+    logger.info("Retrieving users from UMP")
     for
       umpUsers             <- umpConnector.getAllUsers()
       _                    =  logger.info(s"Successfully retrieved ${umpUsers.length} users from UMP")
+      _                    =  logger.info("Enriching UMP users with Slack IDs")
       usersWithSlack       <- addSlackIdsToUsers(umpUsers)
+      _                    =  logger.info(s"Successfully enriched ${usersWithSlack.length} users with Slack data")
+      _                    =  logger.info("Retrieving teams from UMP")
       umpTeams             <- umpConnector.getAllTeams()
       _                    =  logger.info(s"Successfully retrieved ${umpTeams.length} teams from UMP")
       teamsWithMembers     =  addMembersToTeams(umpTeams, usersWithSlack)
       _                    =  logger.info(s"Built ${teamsWithMembers.length} teams with members from UMP user data")
-      _                    =  logger.info(s"Going to insert ${teamsWithMembers.length} teams and ${usersWithSlack.length}" +
-                                s"human users into their respective repositories")
+      _                    =  logger.info(s"Refreshing ${usersWithSlack.length} users in MongoDB")
       _                    <- usersRepository.putAll(usersWithSlack)
       _                    =  logger.info("Successfully refreshed users data from UMP.")
+      _                    =  logger.info(s"Refreshing ${teamsWithMembers.length} teams in MongoDB")
       _                    <- teamsRepository.putAll(teamsWithMembers)
       _                    =  logger.info("Successfully refreshed teams data from UMP.")
     yield ()
