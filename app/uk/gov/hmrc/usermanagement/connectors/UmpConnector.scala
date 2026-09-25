@@ -362,7 +362,7 @@ object UmpConnector:
     ~ ( __ \ "phoneNumber"  ).readNullable[String]
     ~ ( __ \ "role"         ).readWithDefault[String]("user")
     ~ ( __ \ "teams"        ).readWithDefault[Seq[String]](Seq.empty[String])
-    ~ ( __ \ "tools"        ).read[UserAccess](UserAccess.reads)
+    ~ ( __ \ "tools"        ).readNullable[UserAccess](UserAccess.reads).map(_.getOrElse(UserAccess.empty))
     ~ ( __ \ "isDeleted"    ).readWithDefault[Boolean](false)
     ~ ( __ \ "isNonHuman"   ).readWithDefault[Boolean](false)
     )(User.apply _)

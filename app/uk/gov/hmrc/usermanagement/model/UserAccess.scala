@@ -18,9 +18,6 @@ package uk.gov.hmrc.usermanagement.model
 
 import play.api.libs.json.*
 import play.api.libs.functional.syntax.*
-import uk.gov.hmrc.mongo.play.json.formats.MongoJavatimeFormats
-
-import java.time.Instant
 
 case class UserAccess(
   vpn       : Boolean,
@@ -32,6 +29,16 @@ case class UserAccess(
 )
 
 object UserAccess:
+  val empty: UserAccess =
+    UserAccess(
+      vpn        = false,
+      jira       = false,
+      confluence = false,
+      devTools   = false,
+      googleApps = false,
+      pagerduty  = false
+    )
+
   val reads: Reads[UserAccess] =
     (__).read[List[String]].map: accessList =>
       val normalizedAccess = accessList.map(_.toLowerCase).toSet
