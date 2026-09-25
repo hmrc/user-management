@@ -28,7 +28,6 @@ import uk.gov.hmrc.play.bootstrap.http.ErrorResponse
 import uk.gov.hmrc.usermanagement.connectors.UmpConnector
 import uk.gov.hmrc.usermanagement.model.*
 import uk.gov.hmrc.usermanagement.persistence.{SlackChannelCacheRepository, TeamsRepository, UsersRepository}
-import uk.gov.hmrc.usermanagement.service.UserAccessService
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -37,7 +36,6 @@ import scala.concurrent.{ExecutionContext, Future}
 class UserManagementController @Inject()(
     cc                          : ControllerComponents,
     umpConnector                : UmpConnector,
-    userAccessService           : UserAccessService,
     usersRepository             : UsersRepository,
     teamsRepository             : TeamsRepository,
     slackChannelCacheRepository : SlackChannelCacheRepository
@@ -158,12 +156,6 @@ class UserManagementController @Inject()(
       implicit request =>
         umpConnector.editUserAccess(request.body).map(_ => Accepted)
 
-  def getUserAccess(username: String): Action[AnyContent] = Action.async:
-    implicit request =>
-      userAccessService.getUserAccess(username)
-        .map:
-          _.fold(NotFound: Result)(res => Ok(Json.toJson(res)(UserAccess.writes)))
-
   def getUserRoles(username: String): Action[AnyContent] = Action.async:
     implicit request =>
       given Writes[UserRoles] = UserRoles.writes
@@ -224,12 +216,12 @@ class UserManagementController @Inject()(
 
   def manageVpnAccess(username: String, enableVpn: Boolean): Action[AnyContent] = Action.async:
     implicit request =>
-      userAccessService.manageVpnAccess(username, enableVpn)
+      umpConnector.manageVpnAccess(username, enableVpn)
         .map(_ => Accepted)
 
   def manageDevToolsAccess(username: String, enableDevTools: Boolean): Action[AnyContent] = Action.async:
     implicit request =>
-      userAccessService.manageDevToolsAccess(username, enableDevTools)
+      umpConnector.manageDevToolsAccess(username, enableDevTools)
         .map(_ => Accepted)
 
   def requestNewVpnCert(username: String): Action[AnyContent] = Action.async:

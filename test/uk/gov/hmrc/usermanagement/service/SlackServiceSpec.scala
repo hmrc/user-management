@@ -224,53 +224,77 @@ end SlackServiceSpec
 trait SlackServiceSetup:
   val joeBloggsUser =
     User(
-      displayName = Some("Joe Bloggs"),
-      familyName = "Bloggs",
-      givenName = Some("Joe"),
-      organisation = None,
-      primaryEmail = "joe.bloggs@gmail.com",
-      slackId = Some("U1"),
-      username = "joe.bloggs",
+      displayName    = Some("Joe Bloggs"),
+      familyName     = "Bloggs",
+      givenName      = Some("Joe"),
+      organisation   = None,
+      primaryEmail   = "joe.bloggs@gmail.com",
+      slackId        = Some("U1"),
+      username       = "joe.bloggs",
       githubUsername = None,
-      phoneNumber = None,
-      role = "developer",
-      teamNames = Seq("team-foo"),
-      isDeleted = false,
-      isNonHuman = false
+      phoneNumber    = None,
+      role           = "developer",
+      teamNames      = Seq("team-foo"),
+      tools          = UserAccess(
+                         vpn        = true,
+                         jira       = true,
+                         confluence = true,
+                         devTools   = true,
+                         googleApps = true,
+                         pagerduty  = true
+                       ),
+      isDeleted      = false,
+      isNonHuman     = false
     )
 
   val janeDoeUser =
     User(
-      displayName = Some("Jane Doe"),
-      familyName = "Doe",
-      givenName = Some("Jane"),
-      organisation = None,
-      primaryEmail = "jane.doe@gmail.com",
-      slackId = Some("U2"),
-      username = "jane.doe",
+      displayName    = Some("Jane Doe"),
+      familyName     = "Doe",
+      givenName      = Some("Jane"),
+      organisation   = None,
+      primaryEmail   = "jane.doe@gmail.com",
+      slackId        = Some("U2"),
+      username       = "jane.doe",
       githubUsername = None,
-      phoneNumber = None,
-      role = "developer",
-      teamNames = Seq("team-foo"),
-      isDeleted = false,
-      isNonHuman = false
+      phoneNumber    = None,
+      role           = "developer",
+      teamNames      = Seq("team-foo"),
+      tools          = UserAccess(
+                         vpn        = true,
+                         jira       = true,
+                         confluence = true,
+                         devTools   = true,
+                         googleApps = true,
+                         pagerduty  = true
+                       ),
+      isDeleted      = false,
+      isNonHuman     = false
     )
 
   val existingUser =
     User(
-      displayName = Some("Existing User"),
-      familyName = "User",
-      givenName = Some("Existing"),
-      organisation = None,
-      primaryEmail = "existing.user@gmail.com",
-      slackId = Some("U3"),
-      username = "existing.user",
+      displayName    = Some("Existing User"),
+      familyName     = "User",
+      givenName      = Some("Existing"),
+      organisation   = None,
+      primaryEmail   = "existing.user@gmail.com",
+      slackId        = Some("U3"),
+      username       = "existing.user",
       githubUsername = None,
-      phoneNumber = None,
-      role = "developer",
-      teamNames = Seq("team-foo"),
-      isDeleted = false,
-      isNonHuman = false
+      phoneNumber    = None,
+      role           = "developer",
+      teamNames      = Seq("team-foo"),
+      tools          = UserAccess(
+                         vpn        = true,
+                         jira       = true,
+                         confluence = true,
+                         devTools   = true,
+                         googleApps = true,
+                         pagerduty  = true
+                       ),
+      isDeleted      = false,
+      isNonHuman     = false
     )
 
   private given ActorSystem = ActorSystem("test")
